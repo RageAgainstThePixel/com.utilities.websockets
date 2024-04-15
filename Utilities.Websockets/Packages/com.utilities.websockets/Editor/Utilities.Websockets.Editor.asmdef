@@ -1,8 +1,8 @@
 {
-    "name": "ProjectScope.ProjectName.Editor",
-    "rootNamespace": "ProjectScope.ProjectName.Editor",
+    "name": "Utilities.Websockets.Editor",
+    "rootNamespace": "Utilities.Websockets.Editor",
     "references": [
-        "ProjectScope.ProjectName"
+        "Utilities.Websockets"
     ],
     "includePlatforms": [
         "Editor"

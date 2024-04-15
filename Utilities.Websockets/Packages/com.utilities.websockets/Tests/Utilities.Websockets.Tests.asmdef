@@ -1,10 +1,10 @@
 {
-    "name": "ProjectScope.ProjectName.Tests",
-    "rootNamespace": "ProjectScope.ProjectName.Tests",
+    "name": "Utilities.Websockets.Tests",
+    "rootNamespace": "Utilities.Websockets.Tests",
     "references": [
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner",
-        "ProjectScope.ProjectName"
+        "Utilities.Websockets"
     ],
     "includePlatforms": [
         "Editor"
