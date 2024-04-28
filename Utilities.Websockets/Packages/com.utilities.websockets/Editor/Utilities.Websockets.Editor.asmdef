@@ -1,8 +1,8 @@
 {
-    "name": "Utilities.Websockets.Editor",
-    "rootNamespace": "Utilities.Websockets.Editor",
+    "name": "Utilities.WebSockets.Editor",
+    "rootNamespace": "Utilities.WebSockets.Editor",
     "references": [
-        "Utilities.Websockets"
+        "Utilities.WebSockets"
     ],
     "includePlatforms": [
         "Editor"

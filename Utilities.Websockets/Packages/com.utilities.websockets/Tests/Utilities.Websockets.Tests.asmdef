@@ -1,10 +1,11 @@
 {
-    "name": "Utilities.Websockets.Tests",
-    "rootNamespace": "Utilities.Websockets.Tests",
+    "name": "Utilities.WebSockets.Tests",
+    "rootNamespace": "Utilities.WebSockets.Tests",
     "references": [
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner",
-        "Utilities.Websockets"
+        "Utilities.WebSockets",
+        "Utilities.WebSockets.Editor"
     ],
     "includePlatforms": [
         "Editor"

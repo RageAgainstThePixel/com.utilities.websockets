@@ -1,6 +1,6 @@
 {
   "name": "com.utilities.websockets",
-  "displayName": "Utilities.Websockets",
+  "displayName": "Utilities.WebSockets",
   "description": "A simple websocket package for Unity (UPM)",
   "keywords": [],
   "version": "1.0.0-preview.1",
@@ -16,7 +16,6 @@
     "name": "Stephen Hodgson",
     "url": "https://github.com/StephenHodgson"
   },
-  "dependencies": {},
   "publishConfig": {
     "registry": "https://package.openupm.com"
   }

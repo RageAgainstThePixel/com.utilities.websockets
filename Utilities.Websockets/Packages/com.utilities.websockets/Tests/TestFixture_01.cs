@@ -3,7 +3,7 @@
 using System.Threading.Tasks;
 using NUnit.Framework;
 
-namespace Utilities.Websockets.Tests
+namespace Utilities.WebSockets.Tests
 {
     internal class TestFixture_01
     {

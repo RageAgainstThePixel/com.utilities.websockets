@@ -1,6 +1,6 @@
 {
-    "name": "Utilities.Websockets",
-    "rootNamespace": "Utilities.Websockets",
+    "name": "Utilities.WebSockets",
+    "rootNamespace": "Utilities.WebSockets",
     "references": [],
     "includePlatforms": [],
     "excludePlatforms": [],
