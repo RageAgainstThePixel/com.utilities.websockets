@@ -21,6 +21,13 @@ namespace Utilities.WebSockets
 
         public WebSocket(Uri uri, IReadOnlyList<string> subProtocols = null, IReadOnlyDictionary<string, string> headers = null)
         {
+            var protocol = uri.Scheme;
+
+            if (!protocol.Equals("ws") && !protocol.Equals("wss"))
+            {
+                throw new ArgumentException($"Unsupported protocol: {protocol}");
+            }
+
             Address = uri;
             SubProtocols = subProtocols ?? new List<string>();
             Headers = headers ?? new Dictionary<string, string>();
@@ -65,7 +72,7 @@ namespace Utilities.WebSockets
         public event Action<Exception> OnError;
 
         /// <inheritdoc />
-        public event Action<CloseStatusCode> OnClose;
+        public event Action<CloseStatusCode, string> OnClose;
 
         /// <inheritdoc />
         public Uri Address { get; }
@@ -158,7 +165,7 @@ namespace Utilities.WebSockets
             {
                 await Awaiters.UnityMainThread;
                 OnError?.Invoke(e);
-                OnClose?.Invoke(CloseStatusCode.AbnormalClosure);
+                OnClose?.Invoke(CloseStatusCode.AbnormalClosure, e.Message);
             }
             finally
             {
@@ -229,7 +236,7 @@ namespace Utilities.WebSockets
 
                 await _socket.CloseAsync((WebSocketCloseStatus)(int)code, reason, cancellationToken);
                 await Awaiters.UnityMainThread;
-                OnClose?.Invoke(code);
+                OnClose?.Invoke(code, reason);
             }
             catch (Exception e)
             {

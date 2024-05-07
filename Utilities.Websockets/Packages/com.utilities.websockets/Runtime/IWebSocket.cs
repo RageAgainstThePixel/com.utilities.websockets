@@ -27,7 +27,7 @@ namespace Utilities.WebSockets
         /// <summary>
         /// Occurs when the <see cref="IWebSocket"/> connection has been closed.
         /// </summary>
-        event Action<CloseStatusCode> OnClose;
+        event Action<CloseStatusCode, string> OnClose;
 
         Uri Address { get; }
 
