@@ -2,7 +2,9 @@
 
 namespace Utilities.WebSockets
 {
-    public static class WebSocketExtensions
+    public enum OpCode
     {
+        Text,
+        Binary
     }
 }

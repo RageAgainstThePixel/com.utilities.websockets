@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Utilities.WebSockets
@@ -16,19 +17,19 @@ namespace Utilities.WebSockets
         /// <summary>
         /// Occurs when the <see cref="IWebSocket"/> recieves a message.
         /// </summary>
-        event Action OnMessage;
+        event Action<DataFrame> OnMessage;
 
         /// <summary>
         /// Occurs when the <see cref="IWebSocket"/> raises an error.
         /// </summary>
-        event Action OnError;
+        event Action<Exception> OnError;
 
         /// <summary>
         /// Occurs when the <see cref="IWebSocket"/> connection has been closed.
         /// </summary>
-        event Action OnClose;
+        event Action<CloseStatusCode> OnClose;
 
-        Uri uri { get; }
+        Uri Address { get; }
 
         State State { get; }
 
@@ -36,12 +37,16 @@ namespace Utilities.WebSockets
 
         IReadOnlyList<string> SubProtocols { get; }
 
-        Task ConnectAsync();
+        void Connect();
 
-        Task CloseAsync(CloseStatusCode code, string reason = "");
+        Task ConnectAsync(CancellationToken cancellationToken = default);
 
-        Task SendAsync();
+        Task SendAsync(ArraySegment<byte> data, CancellationToken cancellationToken = default);
 
-        Task ReceiveAsync();
+        Task SendAsync(string text, CancellationToken cancellationToken = default);
+
+        void Close();
+
+        Task CloseAsync(CloseStatusCode code = CloseStatusCode.Normal, string reason = "", CancellationToken cancellationToken = default);
     }
 }

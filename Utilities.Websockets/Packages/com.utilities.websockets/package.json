@@ -18,5 +18,8 @@
   },
   "publishConfig": {
     "registry": "https://package.openupm.com"
+  },
+  "dependencies": {
+    "com.utilities.async": "2.1.5"
   }
 }

@@ -12,11 +12,6 @@ namespace Utilities.WebSockets
     public enum CloseStatusCode : ushort
     {
         /// <summary>
-        /// Reserved and MUST NOT be set as a status code in a Close control frame by an endpoint.<para/>
-        /// Indicates that the status code is unset or cannot be parsed.
-        /// </summary>
-        Unknown = 0,
-        /// <summary>
         /// Indicates a normal closure, meaning that the purpose for which the connection was established has been fulfilled.
         /// </summary>
         Normal = 1000,
