@@ -2,6 +2,7 @@
 #if !PLATFORM_WEBGL
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Net.WebSockets;
@@ -33,6 +34,29 @@ namespace Utilities.WebSockets
             SubProtocols = subProtocols ?? new List<string>();
             Headers = headers ?? new Dictionary<string, string>();
             _socket = new ClientWebSocket();
+            RunMessageQueue();
+        }
+
+        private async void RunMessageQueue()
+        {
+            while (_semaphore != null)
+            {
+                // syncs with update loop
+                await Awaiters.UnityMainThread;
+
+                while (_actions.TryDequeue(out var action))
+                {
+                    try
+                    {
+                        action.Invoke();
+                    }
+                    catch (Exception e)
+                    {
+                        Debug.LogException(e);
+                        OnError?.Invoke(e);
+                    }
+                }
+            }
         }
 
         ~WebSocket()
@@ -108,6 +132,7 @@ namespace Utilities.WebSockets
         private ClientWebSocket _socket;
         private SemaphoreSlim _semaphore = new(1, 1);
         private CancellationTokenSource _lifetimeCts;
+        private readonly ConcurrentQueue<Action> _actions = new();
 
         /// <inheritdoc />
         public async void Connect()
@@ -139,10 +164,8 @@ namespace Utilities.WebSockets
                     _socket.Options.AddSubProtocol(subProtocol);
                 }
 
-                await _socket.ConnectAsync(Address, cts.Token);
-                await Awaiters.UnityMainThread;
-                OnOpen?.Invoke();
-
+                await _socket.ConnectAsync(Address, cts.Token).ConfigureAwait(false);
+                _actions.Enqueue(() => OnOpen?.Invoke());
                 var buffer = new Memory<byte>(new byte[8192]);
 
                 while (State == State.Open)
@@ -161,31 +184,26 @@ namespace Utilities.WebSockets
 
                     if (result.MessageType != WebSocketMessageType.Close)
                     {
-                        await Awaiters.UnityMainThread;
-                        OnMessage?.Invoke(new DataFrame((OpCode)(int)result.MessageType, memory));
+                        _actions.Enqueue(() => OnMessage?.Invoke(new DataFrame((OpCode)(int)result.MessageType, memory)));
                     }
                     else
                     {
-                        await CloseAsync(cancellationToken: CancellationToken.None);
+                        await CloseAsync(cancellationToken: CancellationToken.None).ConfigureAwait(false);
                         break;
                     }
                 }
 
                 try
                 {
-                    await _semaphore.WaitAsync(CancellationToken.None);
+                    await _semaphore.WaitAsync(CancellationToken.None).ConfigureAwait(false);
                 }
                 finally
                 {
                     _semaphore.Release();
                 }
-
-                await Awaiters.UnityMainThread;
             }
             catch (Exception e)
             {
-                await Awaiters.UnityMainThread;
-
                 switch (e)
                 {
                     case TaskCanceledException:
@@ -193,8 +211,8 @@ namespace Utilities.WebSockets
                         break;
                     default:
                         Debug.LogException(e);
-                        OnError?.Invoke(e);
-                        OnClose?.Invoke(CloseStatusCode.AbnormalClosure, e.Message);
+                        _actions.Enqueue(() => OnError?.Invoke(e));
+                        _actions.Enqueue(() => OnClose?.Invoke(CloseStatusCode.AbnormalClosure, e.Message));
                         break;
                 }
             }
@@ -202,43 +220,13 @@ namespace Utilities.WebSockets
 
         /// <inheritdoc />
         public async Task SendAsync(string text, CancellationToken cancellationToken = default)
-        {
-            try
-            {
-                using var cts = CancellationTokenSource.CreateLinkedTokenSource(_lifetimeCts.Token, cancellationToken);
-                await _semaphore.WaitAsync(cts.Token).ConfigureAwait(false);
-
-                if (State != State.Open)
-                {
-                    throw new InvalidOperationException("WebSocket is not ready.");
-                }
-
-                await _socket.SendAsync(Encoding.UTF8.GetBytes(text), WebSocketMessageType.Text, true, cts.Token).ConfigureAwait(false);
-                await Awaiters.UnityMainThread;
-            }
-            catch (Exception e)
-            {
-                await Awaiters.UnityMainThread;
-
-                switch (e)
-                {
-                    case TaskCanceledException:
-                    case OperationCanceledException:
-                        break;
-                    default:
-                        Debug.LogException(e);
-                        OnError?.Invoke(e);
-                        break;
-                }
-            }
-            finally
-            {
-                _semaphore.Release();
-            }
-        }
+            => await Internal_SendAsync(Encoding.UTF8.GetBytes(text), WebSocketMessageType.Text, cancellationToken);
 
         /// <inheritdoc />
         public async Task SendAsync(ArraySegment<byte> data, CancellationToken cancellationToken = default)
+            => await Internal_SendAsync(data, WebSocketMessageType.Binary, cancellationToken);
+
+        private async Task Internal_SendAsync(ArraySegment<byte> data, WebSocketMessageType opCode, CancellationToken cancellationToken)
         {
             try
             {
@@ -247,16 +235,13 @@ namespace Utilities.WebSockets
 
                 if (State != State.Open)
                 {
-                    throw new InvalidOperationException("WebSocket is not ready.");
+                    throw new InvalidOperationException("WebSocket is not ready!");
                 }
 
-                await _socket.SendAsync(data, WebSocketMessageType.Binary, true, cts.Token).ConfigureAwait(false);
-                await Awaiters.UnityMainThread;
+                await _socket.SendAsync(data, opCode, true, cts.Token).ConfigureAwait(false);
             }
             catch (Exception e)
             {
-                await Awaiters.UnityMainThread;
-
                 switch (e)
                 {
                     case TaskCanceledException:
@@ -264,7 +249,7 @@ namespace Utilities.WebSockets
                         break;
                     default:
                         Debug.LogException(e);
-                        OnError?.Invoke(e);
+                        _actions.Enqueue(() => OnError?.Invoke(e));
                         break;
                 }
             }
@@ -286,14 +271,11 @@ namespace Utilities.WebSockets
                 if (State == State.Open)
                 {
                     await _socket.CloseAsync((WebSocketCloseStatus)(int)code, reason, cancellationToken).ConfigureAwait(false);
-                    await Awaiters.UnityMainThread;
-                    OnClose?.Invoke(code, reason);
+                    _actions.Enqueue(() => OnClose?.Invoke(code, reason));
                 }
             }
             catch (Exception e)
             {
-                await Awaiters.UnityMainThread;
-
                 switch (e)
                 {
                     case TaskCanceledException:
@@ -301,7 +283,7 @@ namespace Utilities.WebSockets
                         break;
                     default:
                         Debug.LogException(e);
-                        OnError?.Invoke(e);
+                        _actions.Enqueue(() => OnError?.Invoke(e));
                         break;
                 }
             }
