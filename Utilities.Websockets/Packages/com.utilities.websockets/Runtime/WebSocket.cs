@@ -8,6 +8,7 @@ using System.Net.WebSockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using UnityEngine;
 using Utilities.Async;
 
 namespace Utilities.WebSockets
@@ -31,7 +32,7 @@ namespace Utilities.WebSockets
             Address = uri;
             SubProtocols = subProtocols ?? new List<string>();
             Headers = headers ?? new Dictionary<string, string>();
-            _lifetimeCts = new CancellationTokenSource();
+            _socket = new ClientWebSocket();
         }
 
         ~WebSocket()
@@ -45,12 +46,23 @@ namespace Utilities.WebSockets
         {
             if (disposing)
             {
-                _lifetimeCts?.Cancel();
-                _lifetimeCts?.Dispose();
-                _lifetimeCts = null;
+                lock (_lock)
+                {
+                    if (State == State.Open)
+                    {
+                        CloseAsync().Wait();
+                    }
 
-                _semaphore?.Dispose();
-                _semaphore = null;
+                    _socket?.Dispose();
+                    _socket = null;
+
+                    _lifetimeCts?.Cancel();
+                    _lifetimeCts?.Dispose();
+                    _lifetimeCts = null;
+
+                    _semaphore?.Dispose();
+                    _semaphore = null;
+                }
             }
         }
 
@@ -83,7 +95,7 @@ namespace Utilities.WebSockets
             WebSocketState.Connecting => State.Connecting,
             WebSocketState.Open => State.Open,
             WebSocketState.CloseSent or WebSocketState.CloseReceived => State.Closing,
-            _ => State.Closed,
+            _ => State.Closed
         };
 
         /// <inheritdoc />
@@ -106,17 +118,15 @@ namespace Utilities.WebSockets
         {
             try
             {
-                lock (_lock)
+                if (State == State.Open)
                 {
-                    if (_socket != null)
-                    {
-                        // already connected
-                        return;
-                    }
-
-                    _socket = new ClientWebSocket();
+                    Debug.LogWarning("Websocket is already open!");
+                    return;
                 }
 
+                _lifetimeCts?.Cancel();
+                _lifetimeCts?.Dispose();
+                _lifetimeCts = new CancellationTokenSource();
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(_lifetimeCts.Token, cancellationToken);
 
                 foreach (var header in Headers)
@@ -156,23 +166,36 @@ namespace Utilities.WebSockets
                     }
                     else
                     {
-                        await CloseAsync(cancellationToken: cts.Token);
+                        await CloseAsync(cancellationToken: CancellationToken.None);
                         break;
                     }
                 }
+
+                try
+                {
+                    await _semaphore.WaitAsync(CancellationToken.None);
+                }
+                finally
+                {
+                    _semaphore.Release();
+                }
+
+                await Awaiters.UnityMainThread;
             }
             catch (Exception e)
             {
                 await Awaiters.UnityMainThread;
-                OnError?.Invoke(e);
-                OnClose?.Invoke(CloseStatusCode.AbnormalClosure, e.Message);
-            }
-            finally
-            {
-                lock (_lock)
+
+                switch (e)
                 {
-                    _socket?.Dispose();
-                    _socket = null;
+                    case TaskCanceledException:
+                    case OperationCanceledException:
+                        break;
+                    default:
+                        Debug.LogException(e);
+                        OnError?.Invoke(e);
+                        OnClose?.Invoke(CloseStatusCode.AbnormalClosure, e.Message);
+                        break;
                 }
             }
         }
@@ -182,20 +205,35 @@ namespace Utilities.WebSockets
         {
             try
             {
-                await _semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(_lifetimeCts.Token, cancellationToken);
+                await _semaphore.WaitAsync(cts.Token).ConfigureAwait(false);
 
-                if (State != State.Open) { return; }
+                if (State != State.Open)
+                {
+                    throw new InvalidOperationException("WebSocket is not ready.");
+                }
 
-                await _socket.SendAsync(Encoding.UTF8.GetBytes(text), WebSocketMessageType.Text, true, cancellationToken);
+                await _socket.SendAsync(Encoding.UTF8.GetBytes(text), WebSocketMessageType.Text, true, cts.Token).ConfigureAwait(false);
+                await Awaiters.UnityMainThread;
             }
             catch (Exception e)
             {
                 await Awaiters.UnityMainThread;
-                OnError?.Invoke(e);
+
+                switch (e)
+                {
+                    case TaskCanceledException:
+                    case OperationCanceledException:
+                        break;
+                    default:
+                        Debug.LogException(e);
+                        OnError?.Invoke(e);
+                        break;
+                }
             }
             finally
             {
-                _semaphore?.Release();
+                _semaphore.Release();
             }
         }
 
@@ -204,20 +242,35 @@ namespace Utilities.WebSockets
         {
             try
             {
-                await _semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(_lifetimeCts.Token, cancellationToken);
+                await _semaphore.WaitAsync(cts.Token).ConfigureAwait(false);
 
-                if (State != State.Open) { return; }
+                if (State != State.Open)
+                {
+                    throw new InvalidOperationException("WebSocket is not ready.");
+                }
 
-                await _socket.SendAsync(data, WebSocketMessageType.Binary, true, cancellationToken);
+                await _socket.SendAsync(data, WebSocketMessageType.Binary, true, cts.Token).ConfigureAwait(false);
+                await Awaiters.UnityMainThread;
             }
             catch (Exception e)
             {
                 await Awaiters.UnityMainThread;
-                OnError?.Invoke(e);
+
+                switch (e)
+                {
+                    case TaskCanceledException:
+                    case OperationCanceledException:
+                        break;
+                    default:
+                        Debug.LogException(e);
+                        OnError?.Invoke(e);
+                        break;
+                }
             }
             finally
             {
-                _semaphore?.Release();
+                _semaphore.Release();
             }
         }
 
@@ -230,22 +283,27 @@ namespace Utilities.WebSockets
         {
             try
             {
-                await _semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
-
-                if (State != State.Open) { return; }
-
-                await _socket.CloseAsync((WebSocketCloseStatus)(int)code, reason, cancellationToken);
-                await Awaiters.UnityMainThread;
-                OnClose?.Invoke(code, reason);
+                if (State == State.Open)
+                {
+                    await _socket.CloseAsync((WebSocketCloseStatus)(int)code, reason, cancellationToken).ConfigureAwait(false);
+                    await Awaiters.UnityMainThread;
+                    OnClose?.Invoke(code, reason);
+                }
             }
             catch (Exception e)
             {
                 await Awaiters.UnityMainThread;
-                OnError?.Invoke(e);
-            }
-            finally
-            {
-                _semaphore?.Release();
+
+                switch (e)
+                {
+                    case TaskCanceledException:
+                    case OperationCanceledException:
+                        break;
+                    default:
+                        Debug.LogException(e);
+                        OnError?.Invoke(e);
+                        break;
+                }
             }
         }
     }
