@@ -3,7 +3,6 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
-using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -111,7 +110,6 @@ namespace Utilities.WebSockets.Sample
             clearLogsButton.clicked += OnClearLogsClick;
         }
 
-
         private void Update()
         {
             frame += 1;
@@ -124,10 +122,6 @@ namespace Utilities.WebSockets.Sample
                 time = 0f;
             }
 
-            fpsLabel.text = $"FPS: <color=green>{fps:0}</color>";
-            sendCountLabel.text = $"Send: {sendCount}";
-            receiveCountLabel.text = $"Receive: {receiveCount}";
-
             var state = webSocket?.State ?? State.Closed;
             var color = state switch
             {
@@ -135,7 +129,11 @@ namespace Utilities.WebSockets.Sample
                 State.Open => "green",
                 _ => "red"
             };
+
             statusLabel.text = $"Status: <color={color}>{state}</color>";
+            fpsLabel.text = $"FPS: <color=green>{fps:0}</color>";
+            sendCountLabel.text = $"Send: {sendCount}";
+            receiveCountLabel.text = $"Receive: {receiveCount}";
         }
 
         private void OnDisable()
@@ -236,18 +234,16 @@ namespace Utilities.WebSockets.Sample
 
         private void OnSendText1000Click()
         {
-            for (int i = 0; i < 1000; i++)
+            for (int i = 0; i < 100; i++)
             {
-                if (destroyCancellationToken.IsCancellationRequested) { break; }
                 OnSendTextClick();
             }
         }
 
         private void OnSendBytes1000Click()
         {
-            for (int i = 0; i < 1000; i++)
+            for (int i = 0; i < 100; i++)
             {
-                if (destroyCancellationToken.IsCancellationRequested) { break; }
                 OnSendBytesClick();
             }
         }
@@ -257,8 +253,10 @@ namespace Utilities.WebSockets.Sample
             sendCount = 0;
             receiveCount = 0;
             logs.Clear();
+            messageListView.ScrollToItem(0);
             messageListView.itemsSource = null;
             messageListView.Rebuild();
+            messageListView.visible = false;
         }
 
         private void WebSocket_OnOpen()
@@ -270,6 +268,8 @@ namespace Utilities.WebSockets.Sample
 
         private void WebSocket_OnMessage(DataFrame dataFrame)
         {
+            receiveCount += 1;
+
             switch (dataFrame.Type)
             {
                 case OpCode.Text:
@@ -278,11 +278,7 @@ namespace Utilities.WebSockets.Sample
                 case OpCode.Binary:
                     AddLog($"<- Received: {dataFrame.Data.Length} Bytes");
                     break;
-                default:
-                    throw new ArgumentOutOfRangeException();
             }
-
-            receiveCount += 1;
         }
 
         private void WebSocket_OnError(Exception exception)
@@ -325,7 +321,11 @@ namespace Utilities.WebSockets.Sample
             logs.Add(new(level, message));
             messageListView.itemsSource ??= logs;
             messageListView.Rebuild();
-            messageListView.ScrollToItem(logs.Count);
+
+            if (!messageListView.visible)
+            {
+                messageListView.visible = true;
+            }
         }
     }
 }
