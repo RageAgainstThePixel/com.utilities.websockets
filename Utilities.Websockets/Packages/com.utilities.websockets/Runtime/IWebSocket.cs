@@ -33,17 +33,15 @@ namespace Utilities.WebSockets
 
         State State { get; }
 
-        IReadOnlyDictionary<string, string> Headers { get; }
-
         IReadOnlyList<string> SubProtocols { get; }
 
         void Connect();
 
         Task ConnectAsync(CancellationToken cancellationToken = default);
 
-        Task SendAsync(ArraySegment<byte> data, CancellationToken cancellationToken = default);
-
         Task SendAsync(string text, CancellationToken cancellationToken = default);
+
+        Task SendAsync(ArraySegment<byte> data, CancellationToken cancellationToken = default);
 
         void Close();
 

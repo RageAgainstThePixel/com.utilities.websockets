@@ -11,12 +11,10 @@ namespace Utilities.WebSockets.Tests
         [Test]
         public async Task Test_01_SimpleEcho()
         {
-            var socket = new WebSocket("wss://echo.websocket.events");
-
             var openTcs = new TaskCompletionSource<bool>();
             var messageTcs = new TaskCompletionSource<bool>();
             var closeTcs = new TaskCompletionSource<bool>();
-
+            var socket = new WebSocket("wss://echo.websocket.events");
             socket.OnOpen += Socket_OnOpen;
             socket.OnMessage += Socket_OnMessage;
             socket.OnError += Socket_OnError;
