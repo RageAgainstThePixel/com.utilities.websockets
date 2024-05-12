@@ -1,11 +1,12 @@
 var UnityWebSocket = {
     /**
+     * Pointer index for WebSocket objects.
+     */
+    $ptrIndex: 0,
+    /**
      * Array of instanced WebSocket objects.
      */
-    $webSockets: {
-        ptrIndex: 0,
-        sockets: []
-    },
+    $webSockets: [],
     /**
      * Create a new UnityWebSocket object and adds it to the $webSockets array.
      * @param {string} url - The URL to which to connect.
@@ -23,8 +24,8 @@ var UnityWebSocket = {
             var subProtocolsStr = UTF8ToString(subProtocols);
             var subProtocolsArr = subProtocolsStr ? subProtocolsStr.split(',') : undefined;
 
-            for (var i = 0; i < webSockets.sockets.length; i++) {
-                var instance = webSockets.sockets[i];
+            for (var i = 0; i < webSockets.length; i++) {
+                var instance = webSockets[i];
 
                 if (instance !== undefined && instance.url !== undefined && instance.url === urlStr) {
                     console.error('[UnityWebSocket] WebSocket connection already exists for URL: ', urlStr);
@@ -32,8 +33,8 @@ var UnityWebSocket = {
                 }
             }
 
-            var socketPtr = ++webSockets.ptrIndex;
-            webSockets.sockets[socketPtr] = {
+            var socketPtr = ++ptrIndex;
+            webSockets[socketPtr] = {
                 socket: null,
                 url: urlStr,
                 onOpenCallback: onOpenCallback,
@@ -43,7 +44,7 @@ var UnityWebSocket = {
             };
 
             if (subProtocolsArr) {
-                webSockets.sockets[socketPtr].subProtocols = subProtocolsArr;
+                webSockets[socketPtr].subProtocols = subProtocolsArr;
             }
 
             console.log('[UnityWebSocket] Created WebSocket object with websocketPtr: ', socketPtr, ' for URL: ', urlStr, ' and sub-protocols: ', subProtocolsArr)
@@ -60,7 +61,7 @@ var UnityWebSocket = {
      */
     WebSocket_GetState: function (socketPtr) {
         try {
-            var instance = webSockets.sockets[socketPtr];
+            var instance = webSockets[socketPtr];
 
             if (!instance || !instance.socket) {
                 return 0;
@@ -78,7 +79,7 @@ var UnityWebSocket = {
      */
     WebSocket_Connect: function (socketPtr) {
         try {
-            var instance = webSockets.sockets[socketPtr];
+            var instance = webSockets[socketPtr];
 
             if (!instance.subProtocols || instance.subProtocols.length === 0) {
                 instance.socket = new WebSocket(instance.url);
@@ -171,7 +172,7 @@ var UnityWebSocket = {
      */
     WebSocket_SendData: function (socketPtr, data, length) {
         try {
-            var instance = webSockets.sockets[socketPtr];
+            var instance = webSockets[socketPtr];
 
             if (!instance || !instance.socket || instance.socket.readyState !== 1) {
                 console.error('[UnityWebSocket] WebSocket connection does not exist for websocketPtr: ', socketPtr);
@@ -191,7 +192,7 @@ var UnityWebSocket = {
      */
     WebSocket_SendString: function (socketPtr, data) {
         try {
-            var instance = webSockets.sockets[socketPtr];
+            var instance = webSockets[socketPtr];
 
             if (!instance || !instance.socket || instance.socket.readyState !== 1) {
                 console.error('[UnityWebSocket] WebSocket connection does not exist for websocketPtr: ', socketPtr);
@@ -213,7 +214,7 @@ var UnityWebSocket = {
      */
     WebSocket_Close: function (socketPtr, code, reason) {
         try {
-            var instance = webSockets.sockets[socketPtr];
+            var instance = webSockets[socketPtr];
 
             if (!instance || !instance.socket || instance.socket.readyState >= 2) {
                 console.error('[UnityWebSocket] WebSocket connection already closed for websocketPtr: ', socketPtr);
@@ -234,12 +235,13 @@ var UnityWebSocket = {
     WebSocket_Dispose: function (socketPtr) {
         try {
             console.log('[UnityWebSocket] Disposing WebSocket object with websocketPtr: ', socketPtr);
-            delete webSockets.sockets[socketPtr];
+            delete webSockets[socketPtr];
         } catch (error) {
             console.error('[UnityWebSocket] Error disposing WebSocket object with websocketPtr: ', socketPtr, ' Error: ', error);
         }
     }
 };
 
+autoAddDeps(UnityWebSocket, '$ptrIndex');
 autoAddDeps(UnityWebSocket, '$webSockets');
 mergeInto(LibraryManager.library, UnityWebSocket);

@@ -201,9 +201,9 @@ namespace Utilities.WebSockets
 
         public Uri Address { get; }
 
-        public State State => _socket != IntPtr.Zero ?
-            (State)WebSocket_GetState(_socket) :
-            State.Closed;
+        public State State => _socket != IntPtr.Zero
+            ? (State)WebSocket_GetState(_socket)
+            : State.Closed;
 
         public IReadOnlyList<string> SubProtocols { get; }
 
