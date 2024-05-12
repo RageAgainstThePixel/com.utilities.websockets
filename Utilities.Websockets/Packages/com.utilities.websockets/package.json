@@ -16,10 +16,17 @@
     "name": "Stephen Hodgson",
     "url": "https://github.com/StephenHodgson"
   },
-  "publishConfig": {
-    "registry": "https://package.openupm.com"
-  },
   "dependencies": {
     "com.utilities.async": "2.1.5"
+  },
+  "samples": [
+    {
+      "displayName": "Simple WebSocket Demo",
+      "description": "A simple example of how to use the WebSocket package",
+      "path": "Samples~/WebSocketDemo"
+    }
+  ],
+  "publishConfig": {
+    "registry": "https://package.openupm.com"
   }
 }
