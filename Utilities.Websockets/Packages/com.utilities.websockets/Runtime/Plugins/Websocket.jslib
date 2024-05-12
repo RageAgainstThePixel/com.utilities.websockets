@@ -24,7 +24,9 @@ var UnityWebSocket = {
             var subProtocolsArr = subProtocolsStr ? subProtocolsStr.split(',') : undefined;
 
             for (var i = 0; i < webSockets.sockets.length; i++) {
-                if (webSockets.sockets[i].url === urlStr) {
+                var instance = webSockets.sockets[i];
+
+                if (instance !== undefined && instance.url !== undefined && instance.url === urlStr) {
                     console.error('[UnityWebSocket] WebSocket connection already exists for URL: ', urlStr);
                     return 0;
                 }
