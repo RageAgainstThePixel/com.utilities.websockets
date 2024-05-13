@@ -90,6 +90,7 @@ namespace Utilities.WebSockets
             }
         }
 
+        /// <inheritdoc />
         public void Dispose()
         {
             Dispose(true);
@@ -114,6 +115,9 @@ namespace Utilities.WebSockets
         public Uri Address { get; }
 
         /// <inheritdoc />
+        public IReadOnlyList<string> SubProtocols { get; }
+
+        /// <inheritdoc />
         public State State => _socket?.State switch
         {
             WebSocketState.Connecting => State.Connecting,
@@ -121,9 +125,6 @@ namespace Utilities.WebSockets
             WebSocketState.CloseSent or WebSocketState.CloseReceived => State.Closing,
             _ => State.Closed
         };
-
-        /// <inheritdoc />
-        public IReadOnlyList<string> SubProtocols { get; }
 
         private object _lock = new();
         private ClientWebSocket _socket;
@@ -282,4 +283,4 @@ namespace Utilities.WebSockets
         }
     }
 }
-#endif // !PLATFORM_WEBGL
+#endif // !PLATFORM_WEBGL || UNITY_EDITOR

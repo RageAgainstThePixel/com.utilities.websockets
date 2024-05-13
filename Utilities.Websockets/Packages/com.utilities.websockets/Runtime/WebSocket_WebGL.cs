@@ -69,6 +69,41 @@ namespace Utilities.WebSockets
             }
         }
 
+        #region IDisposable
+
+        private void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                lock (_lock)
+                {
+                    if (State == State.Open)
+                    {
+                        CloseAsync().Wait();
+                    }
+
+                    WebSocket_Dispose(_socket);
+                    _socket = IntPtr.Zero;
+
+                    _lifetimeCts?.Cancel();
+                    _lifetimeCts?.Dispose();
+                    _lifetimeCts = null;
+
+                    _semaphore?.Dispose();
+                    _semaphore = null;
+                }
+            }
+        }
+
+        /// <inheritdoc />
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        #endregion IDisposable
+
         #region Native Interop
 
         private static ConcurrentDictionary<IntPtr, WebSocket> _sockets = new();
@@ -160,52 +195,28 @@ namespace Utilities.WebSockets
 
         #endregion Native Interop
 
-        #region IDisposable
-
-        private void Dispose(bool disposing)
-        {
-            if (disposing)
-            {
-                lock (_lock)
-                {
-                    if (State == State.Open)
-                    {
-                        CloseAsync().Wait();
-                    }
-
-                    WebSocket_Dispose(_socket);
-                    _socket = IntPtr.Zero;
-
-                    _lifetimeCts?.Cancel();
-                    _lifetimeCts?.Dispose();
-                    _lifetimeCts = null;
-
-                    _semaphore?.Dispose();
-                    _semaphore = null;
-                }
-            }
-        }
-
-        public void Dispose()
-        {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
-
-        #endregion IDisposable
-
+        /// <inheritdoc />
         public event Action OnOpen;
+
+        /// <inheritdoc />
         public event Action<DataFrame> OnMessage;
+
+        /// <inheritdoc />
         public event Action<Exception> OnError;
+
+        /// <inheritdoc />
         public event Action<CloseStatusCode, string> OnClose;
 
+        /// <inheritdoc />
         public Uri Address { get; }
 
+        /// <inheritdoc />
+        public IReadOnlyList<string> SubProtocols { get; }
+
+        /// <inheritdoc />
         public State State => _socket != IntPtr.Zero
             ? (State)WebSocket_GetState(_socket)
             : State.Closed;
-
-        public IReadOnlyList<string> SubProtocols { get; }
 
         private object _lock = new();
         private IntPtr _socket;
@@ -213,30 +224,36 @@ namespace Utilities.WebSockets
         private CancellationTokenSource _lifetimeCts;
         private readonly ConcurrentQueue<Action> _events = new();
 
+        /// <inheritdoc />
         public async void Connect()
             => await ConnectAsync();
 
+        /// <inheritdoc />
         public async Task ConnectAsync(CancellationToken cancellationToken = default)
         {
             WebSocket_Connect(_socket);
             await Task.CompletedTask;
         }
 
+        /// <inheritdoc />
         public async Task SendAsync(string text, CancellationToken cancellationToken = default)
         {
             WebSocket_SendString(_socket, text);
             await Task.CompletedTask;
         }
 
+        /// <inheritdoc />
         public async Task SendAsync(ArraySegment<byte> data, CancellationToken cancellationToken = default)
         {
             WebSocket_SendData(_socket, data.Array, data.Count);
             await Task.CompletedTask;
         }
 
+        /// <inheritdoc />
         public async void Close()
             => await CloseAsync();
 
+        /// <inheritdoc />
         public async Task CloseAsync(CloseStatusCode code = CloseStatusCode.Normal, string reason = "", CancellationToken cancellationToken = default)
         {
             WebSocket_Close(_socket, code, reason);
@@ -244,4 +261,4 @@ namespace Utilities.WebSockets
         }
     }
 }
-#endif // PLATFORM_WEBGL
+#endif //  PLATFORM_WEBGL && !UNITY_EDITOR

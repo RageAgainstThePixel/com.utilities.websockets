@@ -1,4 +1,4 @@
-var UnityWebSocket = {
+var UnityWebSocketLibrary = {
     /**
      * Pointer index for WebSocket objects.
      */
@@ -8,10 +8,10 @@ var UnityWebSocket = {
      */
     $webSockets: [],
     /**
-     * Create a new UnityWebSocket object and adds it to the $webSockets array.
+     * Create a new WebSocket instance and adds it to the $webSockets array.
      * @param {string} url - The URL to which to connect.
      * @param {string[]} subProtocols - An array of strings that indicate the sub-protocols the client is willing to speak.
-     * @returns {number} - A pointer to the WebSocket object.
+     * @returns {number} - A pointer to the WebSocket instance.
      * @param {function} onOpenCallback - The callback function. WebSocket_OnOpenDelegate(IntPtr websocketPtr) in C#.
      * @param {function} onMessageCallback - The callback function. WebSocket_OnMessageDelegate(IntPtr websocketPtr, IntPtr data, int length, int type) in C#.
      * @param {function} onErrorCallback - The callback function. WebSocket_OnErrorDelegate(IntPtr websocketPtr, IntPtr messagePtr) in C#.
@@ -28,7 +28,7 @@ var UnityWebSocket = {
                 var instance = webSockets[i];
 
                 if (instance !== undefined && instance.url !== undefined && instance.url === urlStr) {
-                    console.error('[UnityWebSocket] WebSocket connection already exists for URL: ', urlStr);
+                    console.error('WebSocket connection already exists for URL: ', urlStr);
                     return 0;
                 }
             }
@@ -47,10 +47,10 @@ var UnityWebSocket = {
                 webSockets[socketPtr].subProtocols = subProtocolsArr;
             }
 
-            console.log('[UnityWebSocket] Created WebSocket object with websocketPtr: ', socketPtr, ' for URL: ', urlStr, ' and sub-protocols: ', subProtocolsArr)
+            // console.log('Created WebSocket object with websocketPtr: ', socketPtr, ' for URL: ', urlStr, ' and sub-protocols: ', subProtocolsArr)
             return socketPtr;
         } catch (error) {
-            console.error('[UnityWebSocket] Error creating WebSocket object for URL: ', urlStr, ' Error: ', error);
+            console.error('Error creating WebSocket object for URL: ', urlStr, ' Error: ', error);
             return 0;
         }
     },
@@ -69,7 +69,7 @@ var UnityWebSocket = {
 
             return instance.socket.readyState;
         } catch (error) {
-            console.error('[UnityWebSocket] Error getting WebSocket state for websocketPtr: ', socketPtr, ' Error: ', error);
+            console.error('Error getting WebSocket state for websocketPtr: ', socketPtr, ' Error: ', error);
             return 3;
         }
     },
@@ -90,15 +90,15 @@ var UnityWebSocket = {
             instance.socket.binaryType = 'arraybuffer';
             instance.socket.onopen = function () {
                 try {
-                    console.log('[UnityWebSocket] WebSocket connection opened for websocketPtr: ', socketPtr);
+                    // console.log('WebSocket connection opened for websocketPtr: ', socketPtr);
                     Module.dynCall_vi(instance.onOpenCallback, socketPtr);
                 } catch (error) {
-                    console.error('[UnityWebSocket] Error calling onOpen callback for websocketPtr: ', socketPtr, ' Error: ', error);
+                    console.error('Error calling onOpen callback for websocketPtr: ', socketPtr, ' Error: ', error);
                 }
             };
             instance.socket.onmessage = function (event) {
                 try {
-                    console.log('[UnityWebSocket] Received message for websocketPtr: ', socketPtr, ' with data: ', event.data);
+                    // console.log('Received message for websocketPtr: ', socketPtr, ' with data: ', event.data);
                     if (event.data instanceof ArrayBuffer) {
                         var array = new Uint8Array(event.data);
                         var buffer = Module._malloc(array.length);
@@ -120,15 +120,15 @@ var UnityWebSocket = {
                             Module._free(buffer);
                         }
                     } else {
-                        console.error('[UnityWebSocket] Error parsing message for websocketPtr: ', socketPtr, ' with data: ', event.data);
+                        console.error('Error parsing message for websocketPtr: ', socketPtr, ' with data: ', event.data);
                     }
                 } catch (error) {
-                    console.error('[UnityWebSocket] Error calling onMessage callback for websocketPtr: ', socketPtr, ' Error: ', error);
+                    console.error('Error calling onMessage callback for websocketPtr: ', socketPtr, ' Error: ', error);
                 }
             };
             instance.socket.onerror = function (event) {
                 try {
-                    console.error('[UnityWebSocket] WebSocket error for websocketPtr: ', socketPtr, ' with message: ', event);
+                    console.error('WebSocket error for websocketPtr: ', socketPtr, ' with message: ', event);
                     var json = JSON.stringify(event);
                     var length = lengthBytesUTF8(json) + 1;
                     var buffer = Module._malloc(length);
@@ -140,12 +140,12 @@ var UnityWebSocket = {
                         Module._free(buffer);
                     }
                 } catch (error) {
-                    console.error('[UnityWebSocket] Error calling onError callback for websocketPtr: ', socketPtr, ' Error: ', error);
+                    console.error('Error calling onError callback for websocketPtr: ', socketPtr, ' Error: ', error);
                 }
             };
             instance.socket.onclose = function (event) {
                 try {
-                    console.log('[UnityWebSocket] WebSocket connection closed for websocketPtr: ', socketPtr, ' with code: ', event.code, ' and reason: ', event.reason);
+                    // console.log('WebSocket connection closed for websocketPtr: ', socketPtr, ' with code: ', event.code, ' and reason: ', event.reason);
                     var length = lengthBytesUTF8(event.reason) + 1;
                     var buffer = Module._malloc(length);
                     stringToUTF8(event.reason, buffer, length);
@@ -156,12 +156,12 @@ var UnityWebSocket = {
                         Module._free(buffer);
                     }
                 } catch (error) {
-                    console.error('[UnityWebSocket] Error calling onClose callback for websocketPtr: ', socketPtr, ' Error: ', error);
+                    console.error('Error calling onClose callback for websocketPtr: ', socketPtr, ' Error: ', error);
                 }
             };
-            console.log('[UnityWebSocket] Connecting WebSocket connection for websocketPtr: ', socketPtr);
+            // console.log('Connecting WebSocket connection for websocketPtr: ', socketPtr);
         } catch (error) {
-            console.error('[UnityWebSocket] Error connecting WebSocket connection for websocketPtr: ', socketPtr, ' Error: ', error);
+            console.error('Error connecting WebSocket connection for websocketPtr: ', socketPtr, ' Error: ', error);
         }
     },
     /**
@@ -175,14 +175,14 @@ var UnityWebSocket = {
             var instance = webSockets[socketPtr];
 
             if (!instance || !instance.socket || instance.socket.readyState !== 1) {
-                console.error('[UnityWebSocket] WebSocket connection does not exist for websocketPtr: ', socketPtr);
+                console.error('WebSocket connection does not exist for websocketPtr: ', socketPtr);
                 return;
             }
 
-            console.log('[UnityWebSocket] Sending message to WebSocket connection for websocketPtr: ', socketPtr, ' with data: ', data, ' and length: ', length);
+            // console.log('Sending message to WebSocket connection for websocketPtr: ', socketPtr, ' with data: ', data, ' and length: ', length);
             instance.socket.send(buffer.slice(data, data + length));
         } catch (error) {
-            console.error('[UnityWebSocket] Error sending message to WebSocket connection for websocketPtr: ', socketPtr, ' Error: ', error);
+            console.error('Error sending message to WebSocket connection for websocketPtr: ', socketPtr, ' Error: ', error);
         }
     },
     /**
@@ -195,15 +195,15 @@ var UnityWebSocket = {
             var instance = webSockets[socketPtr];
 
             if (!instance || !instance.socket || instance.socket.readyState !== 1) {
-                console.error('[UnityWebSocket] WebSocket connection does not exist for websocketPtr: ', socketPtr);
+                console.error('WebSocket connection does not exist for websocketPtr: ', socketPtr);
                 return;
             }
 
             var dataStr = UTF8ToString(data);
-            console.log('[UnityWebSocket] Sending message to WebSocket connection for websocketPtr: ', socketPtr, ' with data: ', dataStr);
+            // console.log('Sending message to WebSocket connection for websocketPtr: ', socketPtr, ' with data: ', dataStr);
             instance.socket.send(dataStr);
         } catch (error) {
-            console.error('[UnityWebSocket] Error sending message to WebSocket connection for websocketPtr: ', socketPtr, ' Error: ', error);
+            console.error('Error sending message to WebSocket connection for websocketPtr: ', socketPtr, ' Error: ', error);
         }
     },
     /**
@@ -217,15 +217,15 @@ var UnityWebSocket = {
             var instance = webSockets[socketPtr];
 
             if (!instance || !instance.socket || instance.socket.readyState >= 2) {
-                console.error('[UnityWebSocket] WebSocket connection already closed for websocketPtr: ', socketPtr);
+                console.error('WebSocket connection already closed for websocketPtr: ', socketPtr);
                 return;
             }
 
             var reasonStr = UTF8ToString(reason);
-            console.log('[UnityWebSocket] Closing WebSocket connection for websocketPtr: ', socketPtr, ' with code: ', code, ' and reason: ', reasonStr);
+            // console.log('Closing WebSocket connection for websocketPtr: ', socketPtr, ' with code: ', code, ' and reason: ', reasonStr);
             instance.socket.close(code, reasonStr);
         } catch (error) {
-            console.error('[UnityWebSocket] Error closing WebSocket connection for websocketPtr: ', socketPtr, ' Error: ', error);
+            console.error('Error closing WebSocket connection for websocketPtr: ', socketPtr, ' Error: ', error);
         }
     },
     /**
@@ -234,14 +234,14 @@ var UnityWebSocket = {
      */
     WebSocket_Dispose: function (socketPtr) {
         try {
-            console.log('[UnityWebSocket] Disposing WebSocket object with websocketPtr: ', socketPtr);
+            // console.log('Disposing WebSocket object with websocketPtr: ', socketPtr);
             delete webSockets[socketPtr];
         } catch (error) {
-            console.error('[UnityWebSocket] Error disposing WebSocket object with websocketPtr: ', socketPtr, ' Error: ', error);
+            console.error('Error disposing WebSocket object with websocketPtr: ', socketPtr, ' Error: ', error);
         }
     }
 };
 
-autoAddDeps(UnityWebSocket, '$ptrIndex');
-autoAddDeps(UnityWebSocket, '$webSockets');
-mergeInto(LibraryManager.library, UnityWebSocket);
+autoAddDeps(UnityWebSocketLibrary, '$ptrIndex');
+autoAddDeps(UnityWebSocketLibrary, '$webSockets');
+mergeInto(LibraryManager.library, UnityWebSocketLibrary);
