@@ -1,0 +1,32 @@
+{
+  "name": "com.utilities.websockets",
+  "displayName": "Utilities.WebSockets",
+  "description": "A simple websocket package for Unity (UPM)",
+  "keywords": [],
+  "version": "1.0.0-preview.1",
+  "unity": "2021.3",
+  "documentationUrl": "https://github.com/RageAgainstThePixel/com.utilities.websockets#documentation",
+  "changelogUrl": "https://github.com/RageAgainstThePixel/com.utilities.websockets/releases",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "repository": "https://github.com/RageAgainstThePixel/com.utilities.websockets.git"
+  },
+  "author": {
+    "name": "Stephen Hodgson",
+    "url": "https://github.com/StephenHodgson"
+  },
+  "dependencies": {
+    "com.utilities.async": "2.1.5"
+  },
+  "samples": [
+    {
+      "displayName": "Simple WebSocket Demo",
+      "description": "A simple example of how to use the WebSocket package",
+      "path": "Samples~/WebSocketDemo"
+    }
+  ],
+  "publishConfig": {
+    "registry": "https://package.openupm.com"
+  }
+}
