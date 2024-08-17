@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Threading;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -44,6 +45,11 @@ namespace Utilities.WebSockets.Sample
         private WebSocket webSocket;
 
         private readonly List<Tuple<LogType, string>> logs = new();
+#if !UNITY_2022_3_OR_NEWER
+        // ReSharper disable once InconsistentNaming
+        private CancellationToken destroyCancellationToken => destroyCancellationTokenSource.Token;
+        private CancellationTokenSource destroyCancellationTokenSource = new CancellationTokenSource();
+#endif
 
         private void OnValidate()
         {
@@ -58,7 +64,6 @@ namespace Utilities.WebSockets.Sample
             OnValidate();
 
             var root = uiDocument.rootVisualElement;
-
             statusLabel = root.Q<Label>("status-label");
             fpsLabel = root.Q<Label>("fps-label");
             addressTextField = root.Q<TextField>("address-text-field");
@@ -147,6 +152,15 @@ namespace Utilities.WebSockets.Sample
             clearLogsButton.clicked -= OnClearLogsClick;
         }
 
+        private void OnDestroy()
+        {
+#if !UNITY_2022_3_OR_NEWER
+            destroyCancellationTokenSource?.Cancel();
+            destroyCancellationTokenSource?.Dispose();
+            destroyCancellationTokenSource = null;
+#endif
+        }
+
         private async void OnConnectClick()
         {
             if (webSocket != null)
@@ -181,7 +195,7 @@ namespace Utilities.WebSockets.Sample
 
             try
             {
-                await webSocket.CloseAsync();
+                await webSocket.CloseAsync(cancellationToken: CancellationToken.None);
             }
             catch (Exception e)
             {
