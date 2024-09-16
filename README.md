@@ -52,7 +52,8 @@ The recommended installation method is though the unity package manager and [Ope
 
 To setup a new connection, create a new instance of WebSocket and subscribe to event callbacks, and call `Connect` or `ConnectAsync` methods.
 
-> Note: WebSocket implements `IDisposable` and should be properly disposed after use!
+> [!IMPORTANT]
+> WebSocket implements `IDisposable` and should be properly disposed after use!
 
 ```csharp
 var address = "wss://echo.websocket.events";
