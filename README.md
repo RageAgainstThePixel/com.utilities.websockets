@@ -76,7 +76,7 @@ socket.Connect();
 ```
 
 > [!NOTE]
-> `socket.ConnectAsync()` is blocking until the disconnected or cancellation token is passed that triggers disconnect on cancel.
+> `socket.ConnectAsync()` is blocking until the connection is closed.
 
 ### Handling Events
 
