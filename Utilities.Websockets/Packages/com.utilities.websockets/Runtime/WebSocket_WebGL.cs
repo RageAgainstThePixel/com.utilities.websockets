@@ -11,17 +11,18 @@ using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 using Utilities.Async;
+using Newtonsoft.Json;
 
 namespace Utilities.WebSockets
 {
     public class WebSocket : IWebSocket
     {
-        public WebSocket(string url, IReadOnlyList<string> subProtocols = null)
-            : this(new Uri(url), subProtocols)
+        public WebSocket(string url, IReadOnlyDictionary<string, string> requestHeaders = null, IReadOnlyList<string> subProtocols = null)
+            : this(new Uri(url), requestHeaders, subProtocols)
         {
         }
 
-        public WebSocket(Uri uri, IReadOnlyList<string> subProtocols = null)
+        public WebSocket(Uri uri, IReadOnlyDictionary<string, string> requestHeaders = null, IReadOnlyList<string> subProtocols = null)
         {
             var protocol = uri.Scheme;
 
@@ -32,7 +33,15 @@ namespace Utilities.WebSockets
 
             Address = uri;
             SubProtocols = subProtocols ?? new List<string>();
-            _socket = WebSocket_Create(uri.ToString(), string.Join(',', SubProtocols), WebSocket_OnOpen, WebSocket_OnMessage, WebSocket_OnError, WebSocket_OnClose);
+            RequestHeaders = requestHeaders ?? new Dictionary<string, string>();
+            _socket = WebSocket_Create(
+                uri.ToString(),
+                JsonConvert.SerializeObject(subProtocols),
+                JsonConvert.SerializeObject(requestHeaders),
+                WebSocket_OnOpen,
+                WebSocket_OnMessage,
+                WebSocket_OnError,
+                WebSocket_OnClose);
 
             if (_socket == IntPtr.Zero || !_sockets.TryAdd(_socket, this))
             {
@@ -109,7 +118,7 @@ namespace Utilities.WebSockets
         private static ConcurrentDictionary<IntPtr, WebSocket> _sockets = new();
 
         [DllImport("__Internal")]
-        private static extern IntPtr WebSocket_Create(string url, string subProtocols, WebSocket_OnOpenDelegate onOpen, WebSocket_OnMessageDelegate onMessage, WebSocket_OnErrorDelegate onError, WebSocket_OnCloseDelegate onClose);
+        private static extern IntPtr WebSocket_Create(string url, string subProtocols, string requestHeaders, WebSocket_OnOpenDelegate onOpen, WebSocket_OnMessageDelegate onMessage, WebSocket_OnErrorDelegate onError, WebSocket_OnCloseDelegate onClose);
 
         private delegate void WebSocket_OnOpenDelegate(IntPtr websocketPtr);
 
@@ -210,6 +219,8 @@ namespace Utilities.WebSockets
         /// <inheritdoc />
         public Uri Address { get; }
 
+        public IReadOnlyDictionary<string, string> RequestHeaders { get; }
+
         /// <inheritdoc />
         public IReadOnlyList<string> SubProtocols { get; }
 
@@ -218,7 +229,7 @@ namespace Utilities.WebSockets
             ? (State)WebSocket_GetState(_socket)
             : State.Closed;
 
-        private object _lock = new();
+        private readonly object _lock = new();
         private IntPtr _socket;
         private SemaphoreSlim _semaphore = new(1, 1);
         private CancellationTokenSource _lifetimeCts;
