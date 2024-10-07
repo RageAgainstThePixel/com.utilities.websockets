@@ -35,6 +35,11 @@ namespace Utilities.WebSockets
         Uri Address { get; }
 
         /// <summary>
+        /// The request headers used by the <see cref="IWebSocket"/>.
+        /// </summary>
+        IReadOnlyDictionary<string, string> RequestHeaders { get; }
+
+        /// <summary>
         /// The sub-protocols used by the <see cref="IWebSocket"/>.
         /// </summary>
         IReadOnlyList<string> SubProtocols { get; }

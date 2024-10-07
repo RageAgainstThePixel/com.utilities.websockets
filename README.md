@@ -75,6 +75,9 @@ socket.OnClose += (code, reason) => Debug.Log($"Connection Closed: {code} {reaso
 socket.Connect();
 ```
 
+> [!NOTE]
+> `socket.ConnectAsync()` is blocking until the disconnected or cancellation token is passed that triggers disconnect on cancel.
+
 ### Handling Events
 
 You can subscribe to the `OnOpen`, `OnMessage`, `OnError`, and `OnClose` events to handle respective situations:
