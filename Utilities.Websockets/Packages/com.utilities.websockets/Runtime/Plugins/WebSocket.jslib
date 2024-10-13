@@ -11,21 +11,18 @@ var UnityWebSocketLibrary = {
      * Create a new WebSocket instance and adds it to the $webSockets array.
      * @param {string} url - The URL to which to connect.
      * @param {string[]} subProtocols - An json array of strings that indicate the sub-protocols the client is willing to speak.
-     * @param {object} requestHeaders - An json map containing key-value pairs of the request headers.
      * @returns {number} - A pointer to the WebSocket instance.
      * @param {function} onOpenCallback - The callback function. WebSocket_OnOpenDelegate(IntPtr websocketPtr) in C#.
      * @param {function} onMessageCallback - The callback function. WebSocket_OnMessageDelegate(IntPtr websocketPtr, IntPtr data, int length, int type) in C#.
      * @param {function} onErrorCallback - The callback function. WebSocket_OnErrorDelegate(IntPtr websocketPtr, IntPtr messagePtr) in C#.
      * @param {function} onCloseCallback - The callback function. WebSocket_OnCloseDelegate(IntPtr websocketPtr, int code, IntPtr reasonPtr) in C#.
      */
-    WebSocket_Create: function (url, subProtocols, requestHeaders, onOpenCallback, onMessageCallback, onErrorCallback, onCloseCallback) {
+    WebSocket_Create: function (url, subProtocols, onOpenCallback, onMessageCallback, onErrorCallback, onCloseCallback) {
         var urlStr = UTF8ToString(url);
 
         try {
             var subProtocolsStr = UTF8ToString(subProtocols);
             var subProtocolsArr = subProtocolsStr ? JSON.parse(subProtocolsStr) : undefined;
-            var requestHeadersStr = UTF8ToString(requestHeaders);
-            var requestHeadersObj = requestHeadersStr ? JSON.parse(requestHeadersStr) : undefined;
 
             for (var i = 0; i < webSockets.length; i++) {
                 var instance = webSockets[i];
@@ -46,15 +43,13 @@ var UnityWebSocketLibrary = {
                 onCloseCallback: onCloseCallback
             };
 
-            if (subProtocolsArr) {
+            if (subProtocolsArr && Array.isArray(subProtocolsArr)) {
                 webSockets[socketPtr].subProtocols = subProtocolsArr;
+            } else {
+                console.error('subProtocols is not an array');
             }
 
-            if (requestHeadersObj) {
-                webSockets[socketPtr].requestHeaders = requestHeadersObj;
-            }
-
-            // console.log('Created WebSocket object with websocketPtr: ', socketPtr, ' for URL: ', urlStr, ' and sub-protocols: ', subProtocolsArr)
+            // console.log(`Created WebSocket object with websocketPtr: ${socketPtr} for URL: ${urlStr}, sub-protocols: ${subProtocolsArr}`);
             return socketPtr;
         } catch (error) {
             console.error('Error creating WebSocket object for URL: ', urlStr, ' Error: ', error);
@@ -96,10 +91,6 @@ var UnityWebSocketLibrary = {
             var options = {};
             if (instance.subProtocols && instance.subProtocols.length > 0) {
                 options.protocols = instance.subProtocols;
-            }
-
-            if (instance.requestHeaders) {
-                options.headers = instance.requestHeaders;
             }
 
             instance.socket = new WebSocket(instance.url, options);

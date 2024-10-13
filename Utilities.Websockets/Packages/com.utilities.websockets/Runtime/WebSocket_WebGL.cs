@@ -31,13 +31,17 @@ namespace Utilities.WebSockets
                 throw new ArgumentException($"Unsupported protocol: {protocol}");
             }
 
+            if (requestHeaders is { Count: > 0 })
+            {
+                Debug.LogWarning("Request Headers are not supported in WebGL and will be ignored.");
+            }
+
             Address = uri;
             SubProtocols = subProtocols ?? new List<string>();
             RequestHeaders = requestHeaders ?? new Dictionary<string, string>();
             _socket = WebSocket_Create(
                 uri.ToString(),
                 JsonConvert.SerializeObject(subProtocols),
-                JsonConvert.SerializeObject(requestHeaders),
                 WebSocket_OnOpen,
                 WebSocket_OnMessage,
                 WebSocket_OnError,
@@ -118,7 +122,7 @@ namespace Utilities.WebSockets
         private static ConcurrentDictionary<IntPtr, WebSocket> _sockets = new();
 
         [DllImport("__Internal")]
-        private static extern IntPtr WebSocket_Create(string url, string subProtocols, string requestHeaders, WebSocket_OnOpenDelegate onOpen, WebSocket_OnMessageDelegate onMessage, WebSocket_OnErrorDelegate onError, WebSocket_OnCloseDelegate onClose);
+        private static extern IntPtr WebSocket_Create(string url, string subProtocols, WebSocket_OnOpenDelegate onOpen, WebSocket_OnMessageDelegate onMessage, WebSocket_OnErrorDelegate onError, WebSocket_OnCloseDelegate onClose);
 
         private delegate void WebSocket_OnOpenDelegate(IntPtr websocketPtr);
 
