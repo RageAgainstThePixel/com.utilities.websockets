@@ -10,7 +10,7 @@ var UnityWebSocketLibrary = {
     /**
      * Create a new WebSocket instance and adds it to the $webSockets array.
      * @param {string} url - The URL to which to connect.
-     * @param {string[]} subProtocols - An array of strings that indicate the sub-protocols the client is willing to speak.
+     * @param {string[]} subProtocols - An json array of strings that indicate the sub-protocols the client is willing to speak.
      * @returns {number} - A pointer to the WebSocket instance.
      * @param {function} onOpenCallback - The callback function. WebSocket_OnOpenDelegate(IntPtr websocketPtr) in C#.
      * @param {function} onMessageCallback - The callback function. WebSocket_OnMessageDelegate(IntPtr websocketPtr, IntPtr data, int length, int type) in C#.
@@ -22,7 +22,7 @@ var UnityWebSocketLibrary = {
 
         try {
             var subProtocolsStr = UTF8ToString(subProtocols);
-            var subProtocolsArr = subProtocolsStr ? subProtocolsStr.split(',') : undefined;
+            var subProtocolsArr = subProtocolsStr ? JSON.parse(subProtocolsStr) : undefined;
 
             for (var i = 0; i < webSockets.length; i++) {
                 var instance = webSockets[i];
@@ -43,11 +43,13 @@ var UnityWebSocketLibrary = {
                 onCloseCallback: onCloseCallback
             };
 
-            if (subProtocolsArr) {
+            if (subProtocolsArr && Array.isArray(subProtocolsArr)) {
                 webSockets[socketPtr].subProtocols = subProtocolsArr;
+            } else {
+                console.error('subProtocols is not an array');
             }
 
-            // console.log('Created WebSocket object with websocketPtr: ', socketPtr, ' for URL: ', urlStr, ' and sub-protocols: ', subProtocolsArr)
+            // console.log(`Created WebSocket object with websocketPtr: ${socketPtr} for URL: ${urlStr}, sub-protocols: ${subProtocolsArr}`);
             return socketPtr;
         } catch (error) {
             console.error('Error creating WebSocket object for URL: ', urlStr, ' Error: ', error);
@@ -80,6 +82,11 @@ var UnityWebSocketLibrary = {
     WebSocket_Connect: function (socketPtr) {
         try {
             var instance = webSockets[socketPtr];
+
+            if (!instance) {
+                console.error('WebSocket instance not found for websocketPtr: ', socketPtr);
+                return;
+            }
 
             if (!instance.subProtocols || instance.subProtocols.length === 0) {
                 instance.socket = new WebSocket(instance.url);

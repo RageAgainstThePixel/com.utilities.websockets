@@ -11,17 +11,18 @@ using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 using Utilities.Async;
+using Newtonsoft.Json;
 
 namespace Utilities.WebSockets
 {
     public class WebSocket : IWebSocket
     {
-        public WebSocket(string url, IReadOnlyList<string> subProtocols = null)
-            : this(new Uri(url), subProtocols)
+        public WebSocket(string url, IReadOnlyDictionary<string, string> requestHeaders = null, IReadOnlyList<string> subProtocols = null)
+            : this(new Uri(url), requestHeaders, subProtocols)
         {
         }
 
-        public WebSocket(Uri uri, IReadOnlyList<string> subProtocols = null)
+        public WebSocket(Uri uri, IReadOnlyDictionary<string, string> requestHeaders = null, IReadOnlyList<string> subProtocols = null)
         {
             var protocol = uri.Scheme;
 
@@ -30,9 +31,21 @@ namespace Utilities.WebSockets
                 throw new ArgumentException($"Unsupported protocol: {protocol}");
             }
 
+            if (requestHeaders is { Count: > 0 })
+            {
+                Debug.LogWarning("Request Headers are not supported in WebGL and will be ignored.");
+            }
+
             Address = uri;
             SubProtocols = subProtocols ?? new List<string>();
-            _socket = WebSocket_Create(uri.ToString(), string.Join(',', SubProtocols), WebSocket_OnOpen, WebSocket_OnMessage, WebSocket_OnError, WebSocket_OnClose);
+            RequestHeaders = requestHeaders ?? new Dictionary<string, string>();
+            _socket = WebSocket_Create(
+                uri.ToString(),
+                JsonConvert.SerializeObject(subProtocols),
+                WebSocket_OnOpen,
+                WebSocket_OnMessage,
+                WebSocket_OnError,
+                WebSocket_OnClose);
 
             if (_socket == IntPtr.Zero || !_sockets.TryAdd(_socket, this))
             {
@@ -210,6 +223,8 @@ namespace Utilities.WebSockets
         /// <inheritdoc />
         public Uri Address { get; }
 
+        public IReadOnlyDictionary<string, string> RequestHeaders { get; }
+
         /// <inheritdoc />
         public IReadOnlyList<string> SubProtocols { get; }
 
@@ -218,7 +233,7 @@ namespace Utilities.WebSockets
             ? (State)WebSocket_GetState(_socket)
             : State.Closed;
 
-        private object _lock = new();
+        private readonly object _lock = new();
         private IntPtr _socket;
         private SemaphoreSlim _semaphore = new(1, 1);
         private CancellationTokenSource _lifetimeCts;
