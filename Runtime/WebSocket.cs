@@ -17,12 +17,12 @@ namespace Utilities.WebSockets
 {
     public class WebSocket : IWebSocket
     {
-        public WebSocket(string url, IReadOnlyList<string> subProtocols = null)
-            : this(new Uri(url), subProtocols)
+        public WebSocket(string url, IReadOnlyDictionary<string, string> requestHeaders = null, IReadOnlyList<string> subProtocols = null)
+            : this(new Uri(url), requestHeaders, subProtocols)
         {
         }
 
-        public WebSocket(Uri uri, IReadOnlyList<string> subProtocols = null)
+        public WebSocket(Uri uri, IReadOnlyDictionary<string, string> requestHeaders = null, IReadOnlyList<string> subProtocols = null)
         {
             var protocol = uri.Scheme;
 
@@ -32,6 +32,7 @@ namespace Utilities.WebSockets
             }
 
             Address = uri;
+            RequestHeaders = requestHeaders ?? new Dictionary<string, string>();
             SubProtocols = subProtocols ?? new List<string>();
             _socket = new ClientWebSocket();
             RunMessageQueue();
@@ -59,10 +60,7 @@ namespace Utilities.WebSockets
             }
         }
 
-        ~WebSocket()
-        {
-            Dispose(false);
-        }
+        ~WebSocket() => Dispose(false);
 
         #region IDisposable
 
@@ -115,6 +113,9 @@ namespace Utilities.WebSockets
         public Uri Address { get; }
 
         /// <inheritdoc />
+        public IReadOnlyDictionary<string, string> RequestHeaders { get; }
+
+        /// <inheritdoc />
         public IReadOnlyList<string> SubProtocols { get; }
 
         /// <inheritdoc />
@@ -126,7 +127,7 @@ namespace Utilities.WebSockets
             _ => State.Closed
         };
 
-        private object _lock = new();
+        private readonly object _lock = new();
         private ClientWebSocket _socket;
         private SemaphoreSlim _semaphore = new(1, 1);
         private CancellationTokenSource _lifetimeCts;
@@ -151,13 +152,19 @@ namespace Utilities.WebSockets
                 _lifetimeCts?.Dispose();
                 _lifetimeCts = new CancellationTokenSource();
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(_lifetimeCts.Token, cancellationToken);
+                cancellationToken = cts.Token;
+
+                foreach (var requestHeader in RequestHeaders)
+                {
+                    _socket.Options.SetRequestHeader(requestHeader.Key, requestHeader.Value);
+                }
 
                 foreach (var subProtocol in SubProtocols)
                 {
                     _socket.Options.AddSubProtocol(subProtocol);
                 }
 
-                await _socket.ConnectAsync(Address, cts.Token).ConfigureAwait(false);
+                await _socket.ConnectAsync(Address, cancellationToken).ConfigureAwait(false);
                 _events.Enqueue(() => OnOpen?.Invoke());
                 var buffer = new Memory<byte>(new byte[8192]);
 
@@ -168,11 +175,12 @@ namespace Utilities.WebSockets
 
                     do
                     {
-                        result = await _socket.ReceiveAsync(buffer, cts.Token).ConfigureAwait(false);
+                        cancellationToken.ThrowIfCancellationRequested();
+                        result = await _socket.ReceiveAsync(buffer, cancellationToken).ConfigureAwait(false);
                         stream.Write(buffer.Span[..result.Count]);
                     } while (!result.EndOfMessage);
 
-                    await stream.FlushAsync(cts.Token).ConfigureAwait(false);
+                    await stream.FlushAsync(cancellationToken).ConfigureAwait(false);
                     var memory = new ReadOnlyMemory<byte>(stream.GetBuffer(), 0, (int)stream.Length);
 
                     if (result.MessageType != WebSocketMessageType.Close)
