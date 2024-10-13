@@ -94,8 +94,6 @@ var UnityWebSocketLibrary = {
                 instance.socket = new WebSocket(instance.url, instance.subProtocols);
             }
 
-            instance.socket = new WebSocket(instance.url, options);
-
             instance.socket.binaryType = 'arraybuffer';
             instance.socket.onopen = function () {
                 try {
