@@ -88,9 +88,10 @@ var UnityWebSocketLibrary = {
                 return;
             }
 
-            var options = {};
-            if (instance.subProtocols && instance.subProtocols.length > 0) {
-                options.protocols = instance.subProtocols;
+            if (!instance.subProtocols || instance.subProtocols.length === 0) {
+                instance.socket = new WebSocket(instance.url);
+            } else {
+                instance.socket = new WebSocket(instance.url, instance.subProtocols);
             }
 
             instance.socket = new WebSocket(instance.url, options);
