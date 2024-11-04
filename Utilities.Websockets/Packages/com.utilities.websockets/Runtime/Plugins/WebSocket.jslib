@@ -40,6 +40,7 @@ var UnityWebSocketLibrary = {
    * @param {function} onCloseCallback - The callback function. WebSocket_OnCloseDelegate(IntPtr websocketPtr, int code, IntPtr reasonPtr) in C#.
    */
   WebSocket_Create: function (url, subProtocols, onOpenCallback, onMessageCallback, onErrorCallback, onCloseCallback) {
+    this.initializeDynCalls();
     var urlStr = UTF8ToString(url);
 
     try {
