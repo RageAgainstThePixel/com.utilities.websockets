@@ -8,28 +8,6 @@ var UnityWebSocketLibrary = {
    */
   $webSockets: [],
   /**
-   * Initializes the dynCall_* function table lookups.
-   * Thanks to @De-Panther for the following code snippet.
-   * Checks if specific dynCall functions exist,
-   * if not, it will create them using the getWasmTableEntry function.
-   * @see https://discussions.unity.com/t/makedyncall-replacing-dyncall-in-unity-6/1543088
-   * @returns {void}
-  */
-  initializeDynCalls: function () {
-    Module.dynCall_vi = Module.dynCall_vi || function (cb, arg1) {
-      return getWasmTableEntry(cb)(arg1);
-    };
-    Module.dynCall_vii = Module.dynCall_vii || function (cb, arg1, arg2) {
-      return getWasmTableEntry(cb)(arg1, arg2);
-    }
-    Module.dynCall_viii = Module.dynCall_viii || function (cb, arg1, arg2, arg3) {
-      return getWasmTableEntry(cb)(arg1, arg2, arg3);
-    }
-    Module.dynCall_viiii = Module.dynCall_viiii || function (cb, arg1, arg2, arg3, arg4) {
-      return getWasmTableEntry(cb)(arg1, arg2, arg3, arg4);
-    }
-  },
-  /**
    * Create a new WebSocket instance and adds it to the $webSockets array.
    * @param {string} url - The URL to which to connect.
    * @param {string[]} subProtocols - An json array of strings that indicate the sub-protocols the client is willing to speak.
@@ -40,7 +18,7 @@ var UnityWebSocketLibrary = {
    * @param {function} onCloseCallback - The callback function. WebSocket_OnCloseDelegate(IntPtr websocketPtr, int code, IntPtr reasonPtr) in C#.
    */
   WebSocket_Create: function (url, subProtocols, onOpenCallback, onMessageCallback, onErrorCallback, onCloseCallback) {
-    this.initializeDynCalls();
+    initializeDynCalls();
     var urlStr = UTF8ToString(url);
 
     try {
