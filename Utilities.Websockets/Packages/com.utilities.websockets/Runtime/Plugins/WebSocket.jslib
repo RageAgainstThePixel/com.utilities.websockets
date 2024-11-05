@@ -23,7 +23,6 @@ var UnityWebSocketLibrary = {
       initializeDynCalls();
       for (var i = 0; i < webSockets.length; i++) {
         var instance = webSockets[i];
-
         if (instance !== undefined && instance.url !== undefined && instance.url === url) {
           console.error(`WebSocket connection already exists for URL: ${url}`);
           return 0;
@@ -99,7 +98,6 @@ var UnityWebSocketLibrary = {
             var array = new Uint8Array(event.data);
             var buffer = Module._malloc(array.length);
             writeArrayToMemory(array, buffer);
-
             try {
               Module.dynCall_viiii(instance.onMessageCallback, socketPtr, buffer, array.length, 1);
             } finally {
@@ -109,7 +107,6 @@ var UnityWebSocketLibrary = {
             var length = lengthBytesUTF8(event.data) + 1;
             var buffer = Module._malloc(length);
             stringToUTF8(event.data, buffer, length);
-
             try {
               Module.dynCall_viiii(instance.onMessageCallback, socketPtr, buffer, length, 0);
             } finally {
@@ -129,7 +126,6 @@ var UnityWebSocketLibrary = {
           var length = lengthBytesUTF8(json) + 1;
           var buffer = Module._malloc(length);
           stringToUTF8(json, buffer, length);
-
           try {
             Module.dynCall_vii(instance.onErrorCallback, socketPtr, buffer);
           } finally {
@@ -145,7 +141,6 @@ var UnityWebSocketLibrary = {
           var length = lengthBytesUTF8(event.reason) + 1;
           var buffer = Module._malloc(length);
           stringToUTF8(event.reason, buffer, length);
-
           try {
             Module.dynCall_viii(instance.onCloseCallback, socketPtr, event.code, buffer);
           } finally {
@@ -169,12 +164,10 @@ var UnityWebSocketLibrary = {
   WebSocket_SendData: function (socketPtr, data, length) {
     try {
       var instance = webSockets[socketPtr];
-
       if (!instance || !instance.socket || instance.socket.readyState !== 1) {
         console.error(`WebSocket connection does not exist for websocketPtr: ${socketPtr}`);
         return;
       }
-
       // console.log(`Sending message to WebSocket connection for websocketPtr: ${socketPtr} with data: ${data} and length: ${length}`);
       instance.socket.send(buffer.slice(data, data + length));
     } catch (error) {
@@ -189,12 +182,10 @@ var UnityWebSocketLibrary = {
   WebSocket_SendString: function (socketPtr, data) {
     try {
       var instance = webSockets[socketPtr];
-
       if (!instance || !instance.socket || instance.socket.readyState !== 1) {
         console.error(`WebSocket connection does not exist for websocketPtr: ${socketPtr}`);
         return;
       }
-
       var dataStr = UTF8ToString(data);
       // console.log(`Sending message to WebSocket connection for websocketPtr: ${socketPtr} with data: ${dataStr}`);
       instance.socket.send(dataStr);
@@ -211,12 +202,10 @@ var UnityWebSocketLibrary = {
   WebSocket_Close: function (socketPtr, code, reason) {
     try {
       var instance = webSockets[socketPtr];
-
       if (!instance || !instance.socket || instance.socket.readyState >= 2) {
         console.error(`WebSocket connection already closed for websocketPtr: ${socketPtr}`);
         return;
       }
-
       var reasonStr = UTF8ToString(reason);
       // console.log(`Closing WebSocket connection for websocketPtr: ${socketPtr} with code: ${code} and reason: ${reasonStr}`);
       instance.socket.close(code, reasonStr);
@@ -237,7 +226,6 @@ var UnityWebSocketLibrary = {
     }
   }
 };
-
 autoAddDeps(UnityWebSocketLibrary, '$ptrIndex');
 autoAddDeps(UnityWebSocketLibrary, '$webSockets');
 mergeInto(LibraryManager.library, UnityWebSocketLibrary);
