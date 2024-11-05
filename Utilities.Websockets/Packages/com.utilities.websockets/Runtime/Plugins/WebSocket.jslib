@@ -96,21 +96,21 @@ var UnityWebSocketLibrary = {
           // console.log(`Received message for websocketPtr: ${socketPtr} with data: ${event.data}`);
           if (event.data instanceof ArrayBuffer) {
             var array = new Uint8Array(event.data);
-            var buffer = Module._malloc(array.length);
+            var buffer = _malloc(array.length);
             writeArrayToMemory(array, buffer);
             try {
               Module.dynCall_viiii(instance.onMessageCallback, socketPtr, buffer, array.length, 1);
             } finally {
-              Module._free(buffer);
+              _free(buffer);
             }
           } else if (typeof event.data === 'string') {
             var length = lengthBytesUTF8(event.data) + 1;
-            var buffer = Module._malloc(length);
+            var buffer = _malloc(length);
             stringToUTF8(event.data, buffer, length);
             try {
               Module.dynCall_viiii(instance.onMessageCallback, socketPtr, buffer, length, 0);
             } finally {
-              Module._free(buffer);
+              _free(buffer);
             }
           } else {
             console.error(`Error parsing message for websocketPtr: ${socketPtr} with data: ${event.data}`);
@@ -124,12 +124,12 @@ var UnityWebSocketLibrary = {
           console.error(`WebSocket error for websocketPtr: ${socketPtr} with message: ${event}`);
           var json = JSON.stringify(event);
           var length = lengthBytesUTF8(json) + 1;
-          var buffer = Module._malloc(length);
+          var buffer = _malloc(length);
           stringToUTF8(json, buffer, length);
           try {
             Module.dynCall_vii(instance.onErrorCallback, socketPtr, buffer);
           } finally {
-            Module._free(buffer);
+            _free(buffer);
           }
         } catch (error) {
           console.error(`Error calling onError callback for websocketPtr: ${socketPtr} Error: ${error}`);
@@ -139,12 +139,12 @@ var UnityWebSocketLibrary = {
         try {
           // console.log(`WebSocket connection closed for websocketPtr: ${socketPtr} with code: ${event.code} and reason: ${event.reason}`);
           var length = lengthBytesUTF8(event.reason) + 1;
-          var buffer = Module._malloc(length);
+          var buffer = _malloc(length);
           stringToUTF8(event.reason, buffer, length);
           try {
             Module.dynCall_viii(instance.onCloseCallback, socketPtr, event.code, buffer);
           } finally {
-            Module._free(buffer);
+            _free(buffer);
           }
         } catch (error) {
           console.error(`Error calling onClose callback for websocketPtr: ${socketPtr} Error: ${error}`);
