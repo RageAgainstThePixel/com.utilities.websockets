@@ -41,7 +41,7 @@ namespace Utilities.WebSockets
             RequestHeaders = requestHeaders ?? new Dictionary<string, string>();
             _socket = WebSocket_Create(
                 uri.ToString(),
-                JsonConvert.SerializeObject(subProtocols),
+                JsonConvert.SerializeObject(SubProtocols),
                 WebSocket_OnOpen,
                 WebSocket_OnMessage,
                 WebSocket_OnError,
