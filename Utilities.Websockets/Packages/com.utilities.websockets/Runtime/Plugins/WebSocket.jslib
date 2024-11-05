@@ -169,7 +169,7 @@ var UnityWebSocketLibrary = {
         return;
       }
       // console.log(`Sending message to WebSocket connection for websocketPtr: ${socketPtr} with data: ${data} and length: ${length}`);
-      instance.socket.send(buffer.slice(data, data + length));
+      instance.socket.send(new Uint8Array(Module.HEAPU8.subarray(data, data + length)));
     } catch (error) {
       console.error(`Error sending message to WebSocket connection for websocketPtr: ${socketPtr} Error: ${error}`);
     }
