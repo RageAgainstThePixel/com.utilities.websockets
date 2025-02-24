@@ -1,3 +1,5 @@
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 /**
  * Initializes the dynCall_* function table lookups.
  * Thanks to @De-Panther for the following code snippet.
@@ -20,3 +22,9 @@ function initializeDynCalls() {
     return getWasmTableEntry(cb)(arg1, arg2, arg3, arg4);
   }
 }
+/**
+ * Initializes DynCalls back to Unity in the Module.preRun.
+ */
+Module['preRun'].push(function () {
+  initializeDynCalls();
+});
