@@ -42,7 +42,7 @@ namespace Utilities.WebSockets
         {
             while (_semaphore != null)
             {
-                // syncs with update loop
+                // ensure that messages are invoked on main thread.
                 await Awaiters.UnityMainThread;
 
                 while (_events.TryDequeue(out var action))
