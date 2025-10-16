@@ -9,14 +9,14 @@
 */
 if (Module["ENVIRONMENT_IS_PTHREAD"]) {
   // If we are in a pthread, we need to initialize the dynCalls immediately
-  initDynCalls();
+  initDynCalls_websockets();
 } else {
   Module['preRun'].push(function () {
-    initDynCalls();
+    initDynCalls_websockets();
   });
 }
 
-function initDynCalls() {
+function initDynCalls_websockets() {
   if (typeof getWasmTableEntry !== "undefined") {
     Module.dynCall_vi = Module.dynCall_vi || function (cb, arg1) {
       return getWasmTableEntry(cb)(arg1);
