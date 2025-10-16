@@ -7,13 +7,13 @@
  * if not, it will create them using the getWasmTableEntry function.
  * @see https://discussions.unity.com/t/makedyncall-replacing-dyncall-in-unity-6/1543088
 */
-if (!Module["ENVIRONMENT_IS_PTHREAD"]) {
+if (Module["ENVIRONMENT_IS_PTHREAD"]) {
+  // If we are in a pthread, we need to initialize the dynCalls immediately
+  initDynCalls();
+} else {
   Module['preRun'].push(function () {
     initDynCalls();
   });
-} else {
-  // If we are in a pthread, we need to initialize the dynCalls immediately
-  initDynCalls();
 }
 
 function initDynCalls() {
