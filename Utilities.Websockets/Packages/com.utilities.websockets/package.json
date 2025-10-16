@@ -3,7 +3,7 @@
   "displayName": "Utilities.WebSockets",
   "description": "A simple websocket package for Unity (UPM)",
   "keywords": [],
-  "version": "1.0.7",
+  "version": "1.1.0",
   "unity": "2021.3",
   "documentationUrl": "https://github.com/RageAgainstThePixel/com.utilities.websockets#documentation",
   "changelogUrl": "https://github.com/RageAgainstThePixel/com.utilities.websockets/releases",
