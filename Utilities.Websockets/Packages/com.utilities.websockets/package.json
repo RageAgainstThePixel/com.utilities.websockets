@@ -4,7 +4,7 @@
   "description": "A simple websocket package for Unity (UPM)",
   "keywords": [],
   "version": "1.1.0",
-  "unity": "2021.3",
+  "unity": "2021.4",
   "documentationUrl": "https://github.com/RageAgainstThePixel/com.utilities.websockets#documentation",
   "changelogUrl": "https://github.com/RageAgainstThePixel/com.utilities.websockets/releases",
   "license": "MIT",
@@ -17,7 +17,7 @@
     "url": "https://github.com/StephenHodgson"
   },
   "dependencies": {
-    "com.utilities.async": "2.2.3",
+    "com.utilities.async": "2.3.1",
     "com.unity.nuget.newtonsoft-json": "3.2.1"
   },
   "samples": [
