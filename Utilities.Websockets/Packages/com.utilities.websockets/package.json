@@ -9,8 +9,8 @@
   "changelogUrl": "https://github.com/RageAgainstThePixel/com.utilities.websockets/releases",
   "license": "MIT",
   "repository": {
-    "type": "git",
-    "repository": "https://github.com/RageAgainstThePixel/com.utilities.websockets.git"
+    "url": "https://github.com/RageAgainstThePixel/com.utilities.websockets.git",
+    "type": "git"
   },
   "author": {
     "name": "Stephen Hodgson",
