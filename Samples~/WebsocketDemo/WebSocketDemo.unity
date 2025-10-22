@@ -185,7 +185,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   uiDocument: {fileID: 162690822}
-  address: wss://echo.websocket.events
+  address: wss://echo.websocket.org
 --- !u!1 &531589459
 GameObject:
   m_ObjectHideFlags: 0

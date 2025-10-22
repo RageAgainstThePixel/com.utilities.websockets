@@ -8,13 +8,15 @@ namespace Utilities.WebSockets.Tests
 {
     internal class TestFixture_01
     {
+        private const string EchoServerAddress = "wss://echo.websocket.org";
+
         [Test]
         public async Task Test_01_SimpleEcho()
         {
             var openTcs = new TaskCompletionSource<bool>();
             var messageTcs = new TaskCompletionSource<bool>();
             var closeTcs = new TaskCompletionSource<bool>();
-            using var socket = new WebSocket("wss://echo.websocket.events");
+            using var socket = new WebSocket(EchoServerAddress);
             socket.OnOpen += Socket_OnOpen;
             socket.OnMessage += Socket_OnMessage;
             socket.OnError += Socket_OnError;
