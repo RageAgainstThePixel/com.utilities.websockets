@@ -128,14 +128,14 @@ namespace Utilities.WebSockets
                 _lifetimeCts = new CancellationTokenSource();
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(_lifetimeCts.Token, cancellationToken);
 
-                foreach (var requestHeader in RequestHeaders)
+                foreach (var (key, value) in RequestHeaders)
                 {
-                    _socket.Options.SetRequestHeader(requestHeader.Key, requestHeader.Value);
+                    _socket.Options.SetRequestHeader(key, value);
                 }
 
-                foreach (var subProtocol in SubProtocols)
+                for (var i = 0; i < SubProtocols.Count; i++)
                 {
-                    _socket.Options.AddSubProtocol(subProtocol);
+                    _socket.Options.AddSubProtocol(SubProtocols[i]);
                 }
 
                 await _socket.ConnectAsync(Address, cts.Token).ConfigureAwait(false);
@@ -155,10 +155,10 @@ namespace Utilities.WebSockets
                     } while (!result.EndOfMessage);
 
                     await stream.FlushAsync(cts.Token).ConfigureAwait(false);
-                    var memory = new ReadOnlyMemory<byte>(stream.GetBuffer(), 0, (int)stream.Length);
 
                     if (result.MessageType != WebSocketMessageType.Close)
                     {
+                        var memory = new ReadOnlyMemory<byte>(stream.GetBuffer(), 0, (int)stream.Length);
                         SyncContextUtility.RunOnUnityThread(() => OnMessage?.Invoke(new DataFrame((OpCode)(int)result.MessageType, memory)));
                     }
                     else

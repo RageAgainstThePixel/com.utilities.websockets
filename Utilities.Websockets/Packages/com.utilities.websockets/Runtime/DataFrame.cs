@@ -4,7 +4,7 @@ using System;
 
 namespace Utilities.WebSockets
 {
-    public class DataFrame
+    public sealed class DataFrame
     {
         public OpCode Type { get; }
 

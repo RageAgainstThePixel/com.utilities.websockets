@@ -3,7 +3,7 @@
     "com.unity.ide.rider": "3.0.38",
     "com.unity.ide.visualstudio": "2.0.25",
     "com.unity.test-framework": "1.1.33",
-    "com.utilities.async": "file:E:/Dev/Rage/com.utilities.async/Utilities.Async/Packages/com.utilities.async",
+    "com.utilities.async": "https://github.com/RageAgainstThePixel/com.utilities.async.git?path=/Utilities.Async/Packages/com.utilities.async#dev2",
     "com.utilities.buildpipeline": "1.8.1",
     "com.unity.modules.uielements": "1.0.0"
   },
