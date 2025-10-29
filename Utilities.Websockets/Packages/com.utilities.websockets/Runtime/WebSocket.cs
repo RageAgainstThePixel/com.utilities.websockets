@@ -3,7 +3,6 @@
 #if !PLATFORM_WEBGL || UNITY_EDITOR
 
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Net.WebSockets;
@@ -35,29 +34,6 @@ namespace Utilities.WebSockets
             RequestHeaders = requestHeaders ?? new Dictionary<string, string>();
             SubProtocols = subProtocols ?? new List<string>();
             _socket = new ClientWebSocket();
-            RunMessageQueue();
-        }
-
-        private async void RunMessageQueue()
-        {
-            while (_semaphore != null)
-            {
-                // ensure that messages are invoked on main thread.
-                await Awaiters.UnityMainThread;
-
-                while (_events.TryDequeue(out var action))
-                {
-                    try
-                    {
-                        action.Invoke();
-                    }
-                    catch (Exception e)
-                    {
-                        Debug.LogException(e);
-                        OnError?.Invoke(e);
-                    }
-                }
-            }
         }
 
         ~WebSocket() => Dispose(false);
@@ -131,7 +107,6 @@ namespace Utilities.WebSockets
         private ClientWebSocket _socket;
         private SemaphoreSlim _semaphore = new(1, 1);
         private CancellationTokenSource _lifetimeCts;
-        private readonly ConcurrentQueue<Action> _events = new();
 
         /// <inheritdoc />
         public async void Connect()
@@ -152,7 +127,6 @@ namespace Utilities.WebSockets
                 _lifetimeCts?.Dispose();
                 _lifetimeCts = new CancellationTokenSource();
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(_lifetimeCts.Token, cancellationToken);
-                cancellationToken = cts.Token;
 
                 foreach (var requestHeader in RequestHeaders)
                 {
@@ -164,8 +138,8 @@ namespace Utilities.WebSockets
                     _socket.Options.AddSubProtocol(subProtocol);
                 }
 
-                await _socket.ConnectAsync(Address, cancellationToken).ConfigureAwait(false);
-                _events.Enqueue(() => OnOpen?.Invoke());
+                await _socket.ConnectAsync(Address, cts.Token).ConfigureAwait(false);
+                SyncContextUtility.RunOnUnityThread(() => OnOpen?.Invoke());
                 var buffer = new Memory<byte>(new byte[8192]);
 
                 while (State == State.Open)
@@ -176,16 +150,16 @@ namespace Utilities.WebSockets
                     do
                     {
                         cancellationToken.ThrowIfCancellationRequested();
-                        result = await _socket.ReceiveAsync(buffer, cancellationToken).ConfigureAwait(false);
+                        result = await _socket.ReceiveAsync(buffer, cts.Token).ConfigureAwait(false);
                         stream.Write(buffer.Span[..result.Count]);
                     } while (!result.EndOfMessage);
 
-                    await stream.FlushAsync(cancellationToken).ConfigureAwait(false);
+                    await stream.FlushAsync(cts.Token).ConfigureAwait(false);
                     var memory = new ReadOnlyMemory<byte>(stream.GetBuffer(), 0, (int)stream.Length);
 
                     if (result.MessageType != WebSocketMessageType.Close)
                     {
-                        _events.Enqueue(() => OnMessage?.Invoke(new DataFrame((OpCode)(int)result.MessageType, memory)));
+                        SyncContextUtility.RunOnUnityThread(() => OnMessage?.Invoke(new DataFrame((OpCode)(int)result.MessageType, memory)));
                     }
                     else
                     {
@@ -212,8 +186,8 @@ namespace Utilities.WebSockets
                         break;
                     default:
                         Debug.LogException(e);
-                        _events.Enqueue(() => OnError?.Invoke(e));
-                        _events.Enqueue(() => OnClose?.Invoke(CloseStatusCode.AbnormalClosure, e.Message));
+                        SyncContextUtility.RunOnUnityThread(() => OnError?.Invoke(e));
+                        SyncContextUtility.RunOnUnityThread(() => OnClose?.Invoke(CloseStatusCode.AbnormalClosure, e.Message));
                         break;
                 }
             }
@@ -250,7 +224,7 @@ namespace Utilities.WebSockets
                         break;
                     default:
                         Debug.LogException(e);
-                        _events.Enqueue(() => OnError?.Invoke(e));
+                        SyncContextUtility.RunOnUnityThread(() => OnError?.Invoke(e));
                         break;
                 }
             }
@@ -272,7 +246,7 @@ namespace Utilities.WebSockets
                 if (State == State.Open)
                 {
                     await _socket.CloseAsync((WebSocketCloseStatus)(int)code, reason, cancellationToken).ConfigureAwait(false);
-                    _events.Enqueue(() => OnClose?.Invoke(code, reason));
+                    SyncContextUtility.RunOnUnityThread(() => OnClose?.Invoke(code, reason));
                 }
             }
             catch (Exception e)
@@ -284,7 +258,7 @@ namespace Utilities.WebSockets
                         break;
                     default:
                         Debug.LogException(e);
-                        _events.Enqueue(() => OnError?.Invoke(e));
+                        SyncContextUtility.RunOnUnityThread(() => OnError?.Invoke(e));
                         break;
                 }
             }
