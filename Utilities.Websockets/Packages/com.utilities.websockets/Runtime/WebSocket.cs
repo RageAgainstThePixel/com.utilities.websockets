@@ -145,21 +145,21 @@ namespace Utilities.WebSockets
 
                 while (State == State.Open)
                 {
-                    var messageLength = 0;
                     ValueWebSocketReceiveResult result;
+                    using var stream = new MemoryStream();
 
                     do
                     {
                         cts.Token.ThrowIfCancellationRequested();
                         result = await _socket.ReceiveAsync(buffer, cts.Token).ConfigureAwait(false);
-                        messageLength += result.Count;
+                        stream.Write(buffer.Span[..result.Count]);
                     } while (!result.EndOfMessage);
 
                     if (result.MessageType != WebSocketMessageType.Close)
                     {
-                        var frame = new DataFrame((OpCode)(int)result.MessageType, buffer[..messageLength]);
+                        var data = new Memory<byte>(stream.GetBuffer(), 0, (int)stream.Length);
+                        var frame = new DataFrame((OpCode)(int)result.MessageType, data);
                         SyncContextUtility.RunOnUnityThread(() => OnMessage?.Invoke(frame));
-
                     }
                     else
                     {
