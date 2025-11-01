@@ -3,6 +3,7 @@
 #if !PLATFORM_WEBGL || UNITY_EDITOR
 
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
 using System.Net.WebSockets;
@@ -12,6 +13,7 @@ using System.Threading.Tasks;
 using Unity.Collections;
 using UnityEngine;
 using Utilities.Async;
+using Utilities.Extensions;
 
 namespace Utilities.WebSockets
 {
@@ -141,31 +143,54 @@ namespace Utilities.WebSockets
 
                 await _socket.ConnectAsync(Address, cts.Token).ConfigureAwait(false);
                 SyncContextUtility.RunOnUnityThread(() => OnOpen?.Invoke());
-                var buffer = new Memory<byte>(new byte[8192]);
 
-                while (State == State.Open)
+                const int bufferSize = 1024 * 16; // 16 KB
+                var buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
+                var receiveBuffer = buffer.AsMemory(0, bufferSize);
+
+                try
                 {
-                    ValueWebSocketReceiveResult result;
-                    using var stream = new MemoryStream();
+                    while (State == State.Open)
+                    {
+                        var messageLength = 0;
+                        ValueWebSocketReceiveResult result;
+                        using var stream = new MemoryStream(bufferSize);
 
-                    do
-                    {
-                        cts.Token.ThrowIfCancellationRequested();
-                        result = await _socket.ReceiveAsync(buffer, cts.Token).ConfigureAwait(false);
-                        stream.Write(buffer.Span[..result.Count]);
-                    } while (!result.EndOfMessage);
+                        do
+                        {
+                            cts.Token.ThrowIfCancellationRequested();
+                            result = await _socket.ReceiveAsync(receiveBuffer, cts.Token).ConfigureAwait(false);
+                            if (result.Count == 0) { continue; }
+                            messageLength += result.Count;
+                            stream.Write(receiveBuffer[..result.Count].Span);
+                        } while (!result.EndOfMessage);
 
-                    if (result.MessageType != WebSocketMessageType.Close)
-                    {
-                        var data = new Memory<byte>(stream.GetBuffer(), 0, (int)stream.Length);
-                        var frame = new DataFrame((OpCode)(int)result.MessageType, data);
-                        SyncContextUtility.RunOnUnityThread(() => OnMessage?.Invoke(frame));
+                        if (result.MessageType != WebSocketMessageType.Close)
+                        {
+                            var frame = new DataFrame((OpCode)(int)result.MessageType, stream.ToNativeArray(length: messageLength, allocator: Allocator.Persistent));
+
+                            SyncContextUtility.RunOnUnityThread(() =>
+                            {
+                                try
+                                {
+                                    OnMessage?.Invoke(frame);
+                                }
+                                finally
+                                {
+                                    frame.Dispose();
+                                }
+                            });
+                        }
+                        else
+                        {
+                            await CloseAsync(cancellationToken: CancellationToken.None).ConfigureAwait(false);
+                            break;
+                        }
                     }
-                    else
-                    {
-                        await CloseAsync(cancellationToken: CancellationToken.None).ConfigureAwait(false);
-                        break;
-                    }
+                }
+                finally
+                {
+                    ArrayPool<byte>.Shared.Return(buffer);
                 }
 
                 try
@@ -188,6 +213,7 @@ namespace Utilities.WebSockets
                         Debug.LogException(e);
                         SyncContextUtility.RunOnUnityThread(() => OnError?.Invoke(e));
                         SyncContextUtility.RunOnUnityThread(() => OnClose?.Invoke(CloseStatusCode.AbnormalClosure, e.Message));
+
                         break;
                 }
             }
