@@ -4,6 +4,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Net.WebSockets;
 using System.Text;
 using System.Threading;
@@ -144,26 +145,21 @@ namespace Utilities.WebSockets
 
                 while (State == State.Open)
                 {
+                    var messageLength = 0;
                     ValueWebSocketReceiveResult result;
-                    using var queue = new NativeQueue<byte>();
 
                     do
                     {
                         cts.Token.ThrowIfCancellationRequested();
                         result = await _socket.ReceiveAsync(buffer, cts.Token).ConfigureAwait(false);
-                        var count = result.Count;
-
-                        for (var i = 0; i < count; i++)
-                        {
-                            queue.Enqueue(buffer.Span[i]);
-                        }
+                        messageLength += result.Count;
                     } while (!result.EndOfMessage);
 
                     if (result.MessageType != WebSocketMessageType.Close)
                     {
-                        var data = queue.ToArray(Allocator.Persistent);
-                        var frame = new DataFrame((OpCode)(int)result.MessageType, data);
+                        var frame = new DataFrame((OpCode)(int)result.MessageType, buffer[..messageLength]);
                         SyncContextUtility.RunOnUnityThread(() => OnMessage?.Invoke(frame));
+
                     }
                     else
                     {
