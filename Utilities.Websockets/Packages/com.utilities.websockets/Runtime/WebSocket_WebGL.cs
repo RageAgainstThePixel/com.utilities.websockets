@@ -10,6 +10,8 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
+using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
 using UnityEngine;
 using Utilities.Async;
 
@@ -53,10 +55,7 @@ namespace Utilities.WebSockets
             }
         }
 
-        ~WebSocket()
-        {
-            Dispose(false);
-        }
+        ~WebSocket() => Dispose(false);
 
 
         #region IDisposable
@@ -119,12 +118,12 @@ namespace Utilities.WebSockets
         private delegate void WebSocket_OnMessageDelegate(IntPtr websocketPtr, IntPtr dataPtr, int length, OpCode type);
 
         [MonoPInvokeCallback(typeof(WebSocket_OnMessageDelegate))]
-        private static void WebSocket_OnMessage(IntPtr websocketPtr, IntPtr dataPtr, int length, OpCode type)
+        private static unsafe void WebSocket_OnMessage(IntPtr websocketPtr, IntPtr dataPtr, int length, OpCode type)
         {
             if (_sockets.TryGetValue(websocketPtr, out var socket))
             {
-                var buffer = new byte[length];
-                Marshal.Copy(dataPtr, buffer, 0, length);
+                var buffer = new NativeArray<byte>(length, Allocator.Persistent);
+                Buffer.MemoryCopy((void*)dataPtr, buffer.GetUnsafePtr(), length, length);
                 SyncContextUtility.RunOnUnityThread(() => socket.OnMessage?.Invoke(new DataFrame(type, buffer)));
             }
             else
