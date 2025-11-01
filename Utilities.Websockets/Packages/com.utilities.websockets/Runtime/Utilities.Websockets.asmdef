@@ -2,11 +2,13 @@
     "name": "Utilities.WebSockets",
     "rootNamespace": "Utilities.WebSockets",
     "references": [
-        "GUID:a6609af893242c7438d701ddd4cce46a"
+        "GUID:a6609af893242c7438d701ddd4cce46a",
+        "GUID:6ab1da3c58a70364e92dc36aaec78f43",
+        "GUID:e0cd26848372d4e5c891c569017e11f1"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
-    "allowUnsafeCode": false,
+    "allowUnsafeCode": true,
     "overrideReferences": false,
     "precompiledReferences": [],
     "autoReferenced": true,

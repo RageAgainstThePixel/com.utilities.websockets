@@ -3,15 +3,17 @@
 #if PLATFORM_WEBGL && !UNITY_EDITOR
 
 using AOT;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
+using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
 using UnityEngine;
 using Utilities.Async;
-using Newtonsoft.Json;
 
 namespace Utilities.WebSockets
 {
@@ -51,36 +53,10 @@ namespace Utilities.WebSockets
             {
                 throw new InvalidOperationException("Failed to create WebSocket instance!");
             }
-
-            RunMessageQueue();
         }
 
-        ~WebSocket()
-        {
-            Dispose(false);
-        }
+        ~WebSocket() => Dispose(false);
 
-        private async void RunMessageQueue()
-        {
-            while (_semaphore != null)
-            {
-                // ensure that messages are invoked on main thread.
-                await Awaiters.UnityMainThread;
-
-                while (_events.TryDequeue(out var action))
-                {
-                    try
-                    {
-                        action.Invoke();
-                    }
-                    catch (Exception e)
-                    {
-                        Debug.LogException(e);
-                        OnError?.Invoke(e);
-                    }
-                }
-            }
-        }
 
         #region IDisposable
 
@@ -131,7 +107,7 @@ namespace Utilities.WebSockets
         {
             if (_sockets.TryGetValue(websocketPtr, out var socket))
             {
-                socket._events.Enqueue(() => socket.OnOpen?.Invoke());
+                SyncContextUtility.RunOnUnityThread(() => socket.OnOpen?.Invoke());
             }
             else
             {
@@ -142,13 +118,13 @@ namespace Utilities.WebSockets
         private delegate void WebSocket_OnMessageDelegate(IntPtr websocketPtr, IntPtr dataPtr, int length, OpCode type);
 
         [MonoPInvokeCallback(typeof(WebSocket_OnMessageDelegate))]
-        private static void WebSocket_OnMessage(IntPtr websocketPtr, IntPtr dataPtr, int length, OpCode type)
+        private static unsafe void WebSocket_OnMessage(IntPtr websocketPtr, IntPtr dataPtr, int length, OpCode type)
         {
             if (_sockets.TryGetValue(websocketPtr, out var socket))
             {
-                var buffer = new byte[length];
-                Marshal.Copy(dataPtr, buffer, 0, length);
-                socket._events.Enqueue(() => socket.OnMessage?.Invoke(new DataFrame(type, buffer)));
+                var buffer = new NativeArray<byte>(length, Allocator.Persistent);
+                Buffer.MemoryCopy((void*)dataPtr, buffer.GetUnsafePtr(), length, length);
+                SyncContextUtility.RunOnUnityThread(() => socket.OnMessage?.Invoke(new DataFrame(type, buffer)));
             }
             else
             {
@@ -164,7 +140,7 @@ namespace Utilities.WebSockets
             if (_sockets.TryGetValue(websocketPtr, out var socket))
             {
                 var message = Marshal.PtrToStringUTF8(messagePtr);
-                socket._events.Enqueue(() => socket.OnError?.Invoke(new Exception(message)));
+                SyncContextUtility.RunOnUnityThread(() => socket.OnError?.Invoke(new Exception(message)));
             }
             else
             {
@@ -180,7 +156,7 @@ namespace Utilities.WebSockets
             if (_sockets.TryGetValue(websocketPtr, out var socket))
             {
                 var reason = Marshal.PtrToStringUTF8(reasonPtr);
-                socket._events.Enqueue(() => socket.OnClose?.Invoke(code, reason));
+                SyncContextUtility.RunOnUnityThread(() => socket.OnClose?.Invoke(code, reason));
             }
             else
             {
@@ -237,7 +213,6 @@ namespace Utilities.WebSockets
         private IntPtr _socket;
         private SemaphoreSlim _semaphore = new(1, 1);
         private CancellationTokenSource _lifetimeCts;
-        private readonly ConcurrentQueue<Action> _events = new();
 
         /// <inheritdoc />
         public async void Connect()
