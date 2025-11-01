@@ -9,6 +9,7 @@ using System.Net.WebSockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Unity.Collections;
 using UnityEngine;
 using Utilities.Async;
 
@@ -149,7 +150,7 @@ namespace Utilities.WebSockets
 
                     do
                     {
-                        cancellationToken.ThrowIfCancellationRequested();
+                        cts.Token.ThrowIfCancellationRequested();
                         result = await _socket.ReceiveAsync(buffer, cts.Token).ConfigureAwait(false);
                         stream.Write(buffer.Span[..result.Count]);
                     } while (!result.EndOfMessage);
@@ -158,8 +159,8 @@ namespace Utilities.WebSockets
 
                     if (result.MessageType != WebSocketMessageType.Close)
                     {
-                        var memory = new ReadOnlyMemory<byte>(stream.GetBuffer(), 0, (int)stream.Length);
-                        SyncContextUtility.RunOnUnityThread(() => OnMessage?.Invoke(new DataFrame((OpCode)(int)result.MessageType, memory)));
+                        var frame = new DataFrame((OpCode)(int)result.MessageType, new NativeArray<byte>(stream.ToArray(), Allocator.Persistent));
+                        SyncContextUtility.RunOnUnityThread(() => OnMessage?.Invoke(frame));
                     }
                     else
                     {
