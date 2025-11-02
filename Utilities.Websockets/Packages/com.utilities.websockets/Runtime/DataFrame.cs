@@ -1,24 +1,29 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using System;
+using Unity.Collections;
+using Utilities.Extensions;
 
 namespace Utilities.WebSockets
 {
-    public class DataFrame
+    public readonly struct DataFrame : IDisposable
     {
         public OpCode Type { get; }
 
-        public ReadOnlyMemory<byte> Data { get; }
+        public NativeArray<byte> Data { get; }
 
-        public string Text { get; }
+        public string Text
+            => Type == OpCode.Text
+                ? System.Text.Encoding.UTF8.GetString(Data.AsSpan())
+                : string.Empty;
 
-        public DataFrame(OpCode type, ReadOnlyMemory<byte> data)
+        public DataFrame(OpCode type, NativeArray<byte> data)
         {
             Type = type;
             Data = data;
-            Text = type == OpCode.Text
-                ? System.Text.Encoding.UTF8.GetString(data.Span)
-                : string.Empty;
         }
+
+        public void Dispose()
+            => Data.Dispose();
     }
 }
