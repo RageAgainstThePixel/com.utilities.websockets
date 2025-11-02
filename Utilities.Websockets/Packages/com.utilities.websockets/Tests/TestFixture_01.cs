@@ -1,17 +1,31 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
+using NUnit.Framework;
 using System;
 using System.Threading.Tasks;
-using NUnit.Framework;
 using Unity.Collections;
 using UnityEngine;
-using Utilities.Async;
 
 namespace Utilities.WebSockets.Tests
 {
     internal class TestFixture_01
     {
         private const string EchoServerAddress = "wss://echo.websocket.org";
+
+        private NativeLeakDetectionMode originalLeakDetectionMode;
+
+        [SetUp]
+        public void Setup()
+        {
+            originalLeakDetectionMode = NativeLeakDetection.Mode;
+            NativeLeakDetection.Mode = NativeLeakDetectionMode.EnabledWithStackTrace;
+        }
+
+        [TearDown]
+        public void TearDown()
+        {
+            NativeLeakDetection.Mode = originalLeakDetectionMode;
+        }
 
         [Test]
         public async Task Test_01_SimpleEcho()
