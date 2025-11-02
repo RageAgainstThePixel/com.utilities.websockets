@@ -3,15 +3,17 @@
 #if !PLATFORM_WEBGL || UNITY_EDITOR
 
 using System;
-using System.Collections.Concurrent;
+using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
 using System.Net.WebSockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Unity.Collections;
 using UnityEngine;
 using Utilities.Async;
+using Utilities.Extensions;
 
 namespace Utilities.WebSockets
 {
@@ -35,29 +37,6 @@ namespace Utilities.WebSockets
             RequestHeaders = requestHeaders ?? new Dictionary<string, string>();
             SubProtocols = subProtocols ?? new List<string>();
             _socket = new ClientWebSocket();
-            RunMessageQueue();
-        }
-
-        private async void RunMessageQueue()
-        {
-            while (_semaphore != null)
-            {
-                // ensure that messages are invoked on main thread.
-                await Awaiters.UnityMainThread;
-
-                while (_events.TryDequeue(out var action))
-                {
-                    try
-                    {
-                        action.Invoke();
-                    }
-                    catch (Exception e)
-                    {
-                        Debug.LogException(e);
-                        OnError?.Invoke(e);
-                    }
-                }
-            }
         }
 
         ~WebSocket() => Dispose(false);
@@ -131,7 +110,6 @@ namespace Utilities.WebSockets
         private ClientWebSocket _socket;
         private SemaphoreSlim _semaphore = new(1, 1);
         private CancellationTokenSource _lifetimeCts;
-        private readonly ConcurrentQueue<Action> _events = new();
 
         /// <inheritdoc />
         public async void Connect()
@@ -152,46 +130,67 @@ namespace Utilities.WebSockets
                 _lifetimeCts?.Dispose();
                 _lifetimeCts = new CancellationTokenSource();
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(_lifetimeCts.Token, cancellationToken);
-                cancellationToken = cts.Token;
 
-                foreach (var requestHeader in RequestHeaders)
+                foreach (var (key, value) in RequestHeaders)
                 {
-                    _socket.Options.SetRequestHeader(requestHeader.Key, requestHeader.Value);
+                    _socket.Options.SetRequestHeader(key, value);
                 }
 
-                foreach (var subProtocol in SubProtocols)
+                for (var i = 0; i < SubProtocols.Count; i++)
                 {
-                    _socket.Options.AddSubProtocol(subProtocol);
+                    _socket.Options.AddSubProtocol(SubProtocols[i]);
                 }
 
-                await _socket.ConnectAsync(Address, cancellationToken).ConfigureAwait(false);
-                _events.Enqueue(() => OnOpen?.Invoke());
-                var buffer = new Memory<byte>(new byte[8192]);
+                await _socket.ConnectAsync(Address, cts.Token).ConfigureAwait(false);
+                SyncContextUtility.RunOnUnityThread(() => OnOpen?.Invoke());
 
-                while (State == State.Open)
+                const int bufferSize = 1024 * 16; // 16 KB
+                var buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
+                var receiveBuffer = buffer.AsMemory(0, bufferSize);
+
+                try
                 {
-                    ValueWebSocketReceiveResult result;
-                    using var stream = new MemoryStream();
-
-                    do
+                    while (State == State.Open)
                     {
-                        cancellationToken.ThrowIfCancellationRequested();
-                        result = await _socket.ReceiveAsync(buffer, cancellationToken).ConfigureAwait(false);
-                        stream.Write(buffer.Span[..result.Count]);
-                    } while (!result.EndOfMessage);
+                        var messageLength = 0;
+                        ValueWebSocketReceiveResult result;
+                        using var stream = new MemoryStream(bufferSize);
 
-                    await stream.FlushAsync(cancellationToken).ConfigureAwait(false);
-                    var memory = new ReadOnlyMemory<byte>(stream.GetBuffer(), 0, (int)stream.Length);
+                        do
+                        {
+                            cts.Token.ThrowIfCancellationRequested();
+                            result = await _socket.ReceiveAsync(receiveBuffer, cts.Token).ConfigureAwait(false);
+                            if (result.Count == 0) { continue; }
+                            messageLength += result.Count;
+                            stream.Write(receiveBuffer[..result.Count].Span);
+                        } while (!result.EndOfMessage);
 
-                    if (result.MessageType != WebSocketMessageType.Close)
-                    {
-                        _events.Enqueue(() => OnMessage?.Invoke(new DataFrame((OpCode)(int)result.MessageType, memory)));
+                        if (result.MessageType != WebSocketMessageType.Close)
+                        {
+                            var frame = new DataFrame((OpCode)(int)result.MessageType, stream.ToNativeArray(length: messageLength, allocator: Allocator.Persistent));
+
+                            SyncContextUtility.RunOnUnityThread(() =>
+                            {
+                                try
+                                {
+                                    OnMessage?.Invoke(frame);
+                                }
+                                finally
+                                {
+                                    frame.Dispose();
+                                }
+                            });
+                        }
+                        else
+                        {
+                            await CloseAsync(cancellationToken: CancellationToken.None).ConfigureAwait(false);
+                            break;
+                        }
                     }
-                    else
-                    {
-                        await CloseAsync(cancellationToken: CancellationToken.None).ConfigureAwait(false);
-                        break;
-                    }
+                }
+                finally
+                {
+                    ArrayPool<byte>.Shared.Return(buffer);
                 }
 
                 try
@@ -212,8 +211,9 @@ namespace Utilities.WebSockets
                         break;
                     default:
                         Debug.LogException(e);
-                        _events.Enqueue(() => OnError?.Invoke(e));
-                        _events.Enqueue(() => OnClose?.Invoke(CloseStatusCode.AbnormalClosure, e.Message));
+                        SyncContextUtility.RunOnUnityThread(() => OnError?.Invoke(e));
+                        SyncContextUtility.RunOnUnityThread(() => OnClose?.Invoke(CloseStatusCode.AbnormalClosure, e.Message));
+
                         break;
                 }
             }
@@ -250,7 +250,7 @@ namespace Utilities.WebSockets
                         break;
                     default:
                         Debug.LogException(e);
-                        _events.Enqueue(() => OnError?.Invoke(e));
+                        SyncContextUtility.RunOnUnityThread(() => OnError?.Invoke(e));
                         break;
                 }
             }
@@ -272,7 +272,7 @@ namespace Utilities.WebSockets
                 if (State == State.Open)
                 {
                     await _socket.CloseAsync((WebSocketCloseStatus)(int)code, reason, cancellationToken).ConfigureAwait(false);
-                    _events.Enqueue(() => OnClose?.Invoke(code, reason));
+                    SyncContextUtility.RunOnUnityThread(() => OnClose?.Invoke(code, reason));
                 }
             }
             catch (Exception e)
@@ -284,7 +284,7 @@ namespace Utilities.WebSockets
                         break;
                     default:
                         Debug.LogException(e);
-                        _events.Enqueue(() => OnError?.Invoke(e));
+                        SyncContextUtility.RunOnUnityThread(() => OnError?.Invoke(e));
                         break;
                 }
             }
