@@ -3,6 +3,7 @@
 using System;
 using System.Threading.Tasks;
 using NUnit.Framework;
+using Unity.Collections;
 using UnityEngine;
 using Utilities.Async;
 
@@ -17,7 +18,8 @@ namespace Utilities.WebSockets.Tests
         {
             try
             {
-                await Awaiters.UnityMainThread;
+                var temp = new NativeArray<byte>(0, Allocator.Temp);
+                Assert.IsTrue(temp.IsCreated);
                 var openTcs = new TaskCompletionSource<bool>();
                 var messageTcs = new TaskCompletionSource<bool>();
                 var closeTcs = new TaskCompletionSource<bool>();
@@ -39,25 +41,25 @@ namespace Utilities.WebSockets.Tests
 
                 void Socket_OnOpen()
                 {
-                    UnityEngine.Debug.Log("Socket_OnOpen");
+                    Debug.Log("Socket_OnOpen");
                     openTcs.TrySetResult(true);
                 }
 
                 void Socket_OnMessage(DataFrame dataFrame)
                 {
-                    UnityEngine.Debug.Log($"Socket_OnMessage: {dataFrame.Text}");
+                    Debug.Log($"Socket_OnMessage: {dataFrame.Text}");
                     messageTcs.TrySetResult(true);
                 }
 
                 void Socket_OnError(Exception exception)
                 {
-                    UnityEngine.Debug.LogException(exception);
+                    Debug.LogException(exception);
                     Assert.Fail(exception.Message);
                 }
 
                 void Socket_OnClose(CloseStatusCode arg1, string arg2)
                 {
-                    UnityEngine.Debug.Log("Socket_OnClose");
+                    Debug.Log("Socket_OnClose");
                     closeTcs.TrySetResult(true);
                 }
             }
