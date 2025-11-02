@@ -2,10 +2,10 @@
     "name": "Utilities.WebSockets.Tests",
     "rootNamespace": "Utilities.WebSockets.Tests",
     "references": [
-        "UnityEngine.TestRunner",
-        "UnityEditor.TestRunner",
-        "Utilities.WebSockets",
-        "Utilities.WebSockets.Editor"
+        "GUID:9fb4e1e06cb4c804ebfb0cff2b90e6d3",
+        "GUID:a6609af893242c7438d701ddd4cce46a",
+        "GUID:0acc523941302664db1f4e527237feb3",
+        "GUID:27619889b8ba8c24980f49ee34dbb44a"
     ],
     "includePlatforms": [
         "Editor"
